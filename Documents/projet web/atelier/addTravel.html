@@ -1,0 +1,40 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <header><h1 style="text-align: center;">Add a Travel Offer</h1></header>
+    <br>
+    <form>
+        <label for="text">Title</label><br>
+        <input type="text" id="T1" required minlength="3"><br>
+        <span id="title_error"></span><br>
+        <label for="text">destination</label><br>
+        <input type="text" id="destination" required pattern="[a-zA-Z ]{3,}"><br>
+        <span id="destination_error"></span><br>
+        <label for="date">Departure Date</label><br>
+        <input type="date" required><br>
+        <label for="date">Return Date</label><br>
+        <input type="date" required><br>
+        <label for="number">Price</label><br>
+        <input type="number" required min="0" step="0.01"><br>
+        <label for="tick">Availability</label><br>
+        <input type="checkbox" required><br>
+        <label for="text">Category</label>
+        <select>
+            <option value="Adventure">Adventure</option>
+            <option value="family">family</option>
+            <option value="couples">Couples</option>
+        </select> 
+        <br>
+        <input type="submit">
+    </form>
+    <h1>Git modification</h1>
+    <script src="script2.js"></script>
+</body>
+<footer>
+
+</footer>
+</html>
