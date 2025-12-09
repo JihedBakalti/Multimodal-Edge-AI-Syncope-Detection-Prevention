@@ -1,0 +1,12 @@
+{
+    "servers": {
+        "greetings": {
+            "type": "stdio",
+            "command": "uv",
+            "args": [
+                "run",
+                "greetings.py"
+            ],
+        }
+    }
+}
