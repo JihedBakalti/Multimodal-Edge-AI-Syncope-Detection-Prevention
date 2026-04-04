@@ -1,0 +1,33 @@
+# Environment variables loader
+python-dotenv>=1.0.0
+
+# Vector database client
+qdrant-client>=1.12.1
+
+# Embedding models
+sentence-transformers>=2.2.0
+numpy>=2.2.0,<2.3
+
+# LLM access via Groq
+# LLM access via Gemini
+google-generativeai>=0.3.0
+
+# Core LangChain and community connectors
+langchain>=0.1.0
+langchain-community>=0.2.0
+
+# Language detection
+langdetect>=1.0.9
+
+# PDF ingestion for RAG
+pypdf>=3.17.0
+
+# Optional: FAISS for local embedding storage (if needed)
+faiss-cpu>=1.7.3
+
+# Required for Groq / Google AI SDKs
+protobuf>=4.25.3,<6.0.0
+streamlit
+twilio>=8.0.0
+fastapi>=0.111.0
+uvicorn>=0.30.0
