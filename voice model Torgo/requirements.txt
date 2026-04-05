@@ -1,0 +1,57 @@
+# ═══════════════════════════════════════════════════════════════════
+# Voice Anomaly Detection - Requirements.txt
+# Dépendances Python complètes
+# ═══════════════════════════════════════════════════════════════════
+
+# Core ML Libraries
+tensorflow>=2.11.0
+keras>=2.11.0
+numpy>=1.22.0
+pandas>=1.4.0
+
+# Audio Processing
+librosa>=0.9.2
+soundfile>=0.12.1
+scipy>=1.9.0
+
+# Audio Input/Output (for recording from microphone)
+sounddevice>=0.4.5
+pyaudio>=0.2.11
+wave  # built-in, but included for clarity
+
+# Machine Learning Utilities
+scikit-learn>=1.1.0
+joblib>=1.2.0
+
+# Visualization (optional but recommended)
+matplotlib>=3.5.0
+seaborn>=0.12.0
+
+# Data Processing
+scipy>=1.9.0
+
+# Terminal UI (optional)
+colorama>=0.4.6
+
+# Development (optional)
+jupyter>=1.0.0
+notebook>=6.4.0
+ipython>=8.0.0
+
+# ═══════════════════════════════════════════════════════════════════
+# Optional: For Raspberry Pi Optimization
+# ═══════════════════════════════════════════════════════════════════
+# tensorflow-lite>=2.11.0    # Lightweight TF for edge devices
+# tflite-runtime>=2.8.0      # TFLite runtime only (smaller footprint)
+
+# ═══════════════════════════════════════════════════════════════════
+# Installation Command:
+# ═══════════════════════════════════════════════════════════════════
+# pip install -r requirements.txt
+#
+# For Raspberry Pi (lightweight):
+# pip install -r requirements.txt --no-deps
+# Then install manually only needed packages
+#
+# For Conda:
+# conda install --file requirements.txt
