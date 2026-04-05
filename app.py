@@ -6,8 +6,16 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Import backend logic
-# Import backend logic
 from medical_assistant import get_response, COLLECTION_NAME, listen_and_transcribe, speak_response
+
+try:
+    from Elysa.wakeword_service import pause_wakeword_mic, resume_wakeword_mic
+except ImportError:
+    def pause_wakeword_mic():
+        pass
+
+    def resume_wakeword_mic():
+        pass
 
 # Page Config
 st.set_page_config(
@@ -57,7 +65,11 @@ prompt = st.chat_input("I feel dizzy / Someone just fainted...")
 # Voice Input Button
 if st.sidebar.button("🎤 Speak / Parler / تحدث"):
     with st.spinner("Listening... Speak now!"):
-        voice_text = listen_and_transcribe()
+        pause_wakeword_mic()
+        try:
+            voice_text = listen_and_transcribe()
+        finally:
+            resume_wakeword_mic()
         if voice_text:
             prompt = voice_text
         else:

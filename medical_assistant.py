@@ -167,6 +167,26 @@ except ImportError as e:
 
 from intersense_orchestrator import evaluate_simulation_state
 
+try:
+    from Elysa.wakeword_service import (
+        pause_wakeword_mic,
+        resume_wakeword_mic,
+        schedule_wakeword_resume_after_voice_session,
+        start_elysa_wakeword_listener,
+    )
+except ImportError:
+    def pause_wakeword_mic():
+        pass
+
+    def resume_wakeword_mic():
+        pass
+
+    def schedule_wakeword_resume_after_voice_session():
+        pass
+
+    def start_elysa_wakeword_listener(*args, **kwargs):
+        return False
+
 
 # ----------------------------
 # Agent Actions & Tools (Inlined)
@@ -340,6 +360,16 @@ INPUT_QUEUE = queue.Queue()
 ORCHESTRATOR_QUEUE = queue.Queue()
 WS_LOOP = None
 
+# Last UI-selected voice language (WebSocket); used for "Elysa" wake → \voice
+_VOICE_CLIENT_LANG = ["en"]
+_VOICE_CLIENT_LANG_LOCK = threading.Lock()
+
+
+def get_client_voice_language():
+    with _VOICE_CLIENT_LANG_LOCK:
+        return _VOICE_CLIENT_LANG[0]
+
+
 def broadcast_state(state, audio_level=0.0):
     """Send state update to all connected clients in a thread-safe way."""
     if not CONNECTED_CLIENTS or WS_LOOP is None:
@@ -366,9 +396,16 @@ async def ws_handler(websocket):
         async for message in websocket:
             try:
                 data = json.loads(message)
-                if data.get("type") == "command":
+                msg_type = data.get("type")
+                lang = data.get("language")
+                if isinstance(lang, str) and lang.strip():
+                    with _VOICE_CLIENT_LANG_LOCK:
+                        _VOICE_CLIENT_LANG[0] = lang.strip().lower()[:16]
+                if msg_type == "language":
+                    continue
+                if msg_type == "command":
                     cmd = data.get("content")
-                    language = data.get("language", "en") # Default to english
+                    language = data.get("language", "en")  # Default to english
                     print(f" [WS] Remote command received: {cmd} (lang: {language})")
                     INPUT_QUEUE.put({"text": cmd, "language": language})
             except json.JSONDecodeError:
@@ -648,6 +685,40 @@ def speak_response(text):
     finally:
         broadcast_state("neutral") # Always reset to neutral
 
+# Cached wake greeting (generate once: python Elysa/download_greeting_audio.py)
+ELYSA_WAKE_GREETING_MP3 = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "Elysa", "elysa_greeting.mp3"
+)
+
+
+def play_elysa_wake_greeting():
+    """Play local MP3 greeting after wake word — no ElevenLabs round-trip."""
+    if not os.path.isfile(ELYSA_WAKE_GREETING_MP3):
+        print(
+            f"⚠️ Elysa greeting audio missing: {ELYSA_WAKE_GREETING_MP3}\n"
+            "   Run: python Elysa/download_greeting_audio.py"
+        )
+        return
+    if not pygame:
+        return
+    if not pygame.mixer.get_init():
+        try:
+            pygame.mixer.init(buffer=512)
+        except Exception as e:
+            print(f"⚠️ Elysa greeting: mixer init failed: {e}")
+            return
+    try:
+        broadcast_state("speaking", audio_level=0.8)
+        pygame.mixer.music.load(ELYSA_WAKE_GREETING_MP3)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy():
+            pygame.time.Clock().tick(10)
+    except Exception as e:
+        print(f"⚠️ Elysa greeting playback failed: {e}")
+    finally:
+        broadcast_state("neutral")
+
+
 # Maximum number of conversation exchanges to keep in history
 MAX_HISTORY_EXCHANGES = 5
 
@@ -759,6 +830,14 @@ CONVERSATION CONTEXT:
 
 def run_warning_voice_check(heart_rate, language="en"):
     """Wake the voice agent with dynamic prompt injection."""
+    pause_wakeword_mic()
+    try:
+        return _run_warning_voice_check_impl(heart_rate, language=language)
+    finally:
+        resume_wakeword_mic()
+
+
+def _run_warning_voice_check_impl(heart_rate, language="en"):
     dynamic_prompt = (
         "SYSTEM ALERT: The user's wearable detected a physiological anomaly. "
         f"Their current simulated heart rate is {heart_rate} BPM. "
@@ -864,6 +943,14 @@ def run_no_human_safety_check(heart_rate, anomaly_value, language="en"):
     Ask up to 3 verbal safety checks.
     Escalate to WhatsApp alert if user is symptomatic or does not answer clearly.
     """
+    pause_wakeword_mic()
+    try:
+        return _run_no_human_safety_check_impl(heart_rate, anomaly_value, language=language)
+    finally:
+        resume_wakeword_mic()
+
+
+def _run_no_human_safety_check_impl(heart_rate, anomaly_value, language="en"):
     max_attempts = 3
 
     for attempt in range(1, max_attempts + 1):
@@ -928,6 +1015,16 @@ def run_human_detected_safety_check(heart_rate, anomaly_value, dl_risk_score, la
     Human detected with no critical DL event:
     contact user up to 3 times and escalate on symptoms/unclear responses.
     """
+    pause_wakeword_mic()
+    try:
+        return _run_human_detected_safety_check_impl(
+            heart_rate, anomaly_value, dl_risk_score, language=language
+        )
+    finally:
+        resume_wakeword_mic()
+
+
+def _run_human_detected_safety_check_impl(heart_rate, anomaly_value, dl_risk_score, language="en"):
     max_attempts = 3
     history = []
 
@@ -1160,7 +1257,8 @@ def main():
     # Start WebSocket Server + embedded REST API
     start_websocket_server()
     start_orchestrator_api_server()
-    
+    start_elysa_wakeword_listener(INPUT_QUEUE, get_language=get_client_voice_language)
+
     # Start Console Input Thread
     def console_input():
         while True:
@@ -1184,7 +1282,7 @@ def main():
     print("  • Sudden loss of consciousness")
     print("  • Recovery position instructions")
     print("  • Emergency signs")
-    print("  • Type '\\voice' to speak\n")
+    print("  • Say \"Elysa\" (wake word) or type '\\voice' to speak\n")
     
     history = []
     
@@ -1216,9 +1314,11 @@ def main():
 
             # Handle both string (console) and dict (websocket) inputs
             current_language = None
+            elysa_wake_greeting = False
             if isinstance(queue_item, dict):
                 user_input = queue_item.get("text", "")
                 current_language = queue_item.get("language", "en")
+                elysa_wake_greeting = bool(queue_item.get("elysa_greeting"))
             else:
                 user_input = str(queue_item)
 
@@ -1241,70 +1341,88 @@ def main():
                         break
 
             
-            # Voice Input Handler
+            # Voice: WebSocket / wake word "Elysa" enqueue \\voice — share mic with OpenWakeWord
+            is_voice_cmd = user_input.strip().lower() == "\\voice"
+            if is_voice_cmd:
+                pause_wakeword_mic()
+                # Wake + mic button can stack \\voice while listening; drop duplicate bursts
+                to_requeue = []
+                while True:
+                    try:
+                        pending_item = INPUT_QUEUE.get_nowait()
+                    except queue.Empty:
+                        break
+                    pending_text = (
+                        pending_item.get("text", "").strip().lower()
+                        if isinstance(pending_item, dict)
+                        else str(pending_item).strip().lower()
+                    )
+                    if pending_text == "\\voice":
+                        continue
+                    to_requeue.append(pending_item)
+                for item in to_requeue:
+                    INPUT_QUEUE.put(item)
             voice_mode = False
-            if user_input.strip().lower() == "\\voice":
-                print(f"🎤 Starting voice mode... (Language: {current_language})") 
-                transcribed_text = listen_and_transcribe()
-                if transcribed_text:
+            try:
+                if is_voice_cmd:
+                    print(f"🎤 Starting voice mode... (Language: {current_language})")
+                    if elysa_wake_greeting:
+                        play_elysa_wake_greeting()
+                    transcribed_text = listen_and_transcribe()
+                    if not transcribed_text:
+                        broadcast_state("neutral")
+                        continue
                     print(f"🎤 You said: {transcribed_text}")
                     user_input = transcribed_text
                     voice_mode = True
+
+                raw_reply = get_response(user_input, history, language=current_language)
+
+                # Debug actual output
+                print(f"DEBUG: Raw Reply: {raw_reply!r}")
+
+                parsed_response = parse_agent_json(raw_reply)
+                print(f"DEBUG: Parsed Successfully: {parsed_response}")
+
+                agent_response = handle_agent_response(parsed_response)
+
+                if agent_response["type"] == "action":
+                    broadcast_state("thinking")
+
+                    action_name = agent_response["name"]
+                    action_args = agent_response["args"]
+                    print(f"⚙️ EXECUTING ACTION: {action_name} {action_args}")
+
+                    result = execute_action(action_name, action_args)
+                    print(f"✅ ACTION RESULT: {result}")
+
+                    if result.get("status") == "played":
+                        reply_text = "I have sounded the alert."
+                    else:
+                        reply_text = f"Action completed: {result}"
+
+                    broadcast_state("speaking")
+                    if voice_mode:
+                        speak_response(reply_text)
+                        clear_input_queue()
+
+                    history.append((user_input, reply_text))
+                    print(f"Medical_Assisstant: {reply_text}\n")
+
                 else:
-                    broadcast_state("neutral")
-                    continue
+                    reply_text = agent_response["text"]
+                    history.append((user_input, reply_text))
+                    print(f"Medical_Assisstant: {reply_text}\n")
 
-            raw_reply = get_response(user_input, history, language=current_language)
-            
-            # Debug actual output
-            print(f"DEBUG: Raw Reply: {raw_reply!r}")
+                    if voice_mode:
+                        speak_response(reply_text)
+                        clear_input_queue()
 
-            parsed_response = parse_agent_json(raw_reply)
-            print(f"DEBUG: Parsed Successfully: {parsed_response}")
+            finally:
+                if is_voice_cmd:
+                    schedule_wakeword_resume_after_voice_session()
 
-            
-            # Helper to handle the parsed response
-            agent_response = handle_agent_response(parsed_response)
-            
-            if agent_response["type"] == "action":
-                broadcast_state("thinking") # Show we are processing action
-                
-                # Execute Action
-                action_name = agent_response["name"]
-                action_args = agent_response["args"]
-                print(f"⚙️ EXECUTING ACTION: {action_name} {action_args}")
-                
-                result = execute_action(action_name, action_args)
-                print(f"✅ ACTION RESULT: {result}")
-                
-                # For this MVP, we just speak a confirmation or the result
-                # In a full loops, we'd feed this back to LLM.
-                # Construct a simple speech response based on result
-                if result.get("status") == "played":
-                    reply_text = "I have sounded the alert."
-                else:
-                    reply_text = f"Action completed: {result}"
-                
-                # Transition to speaking
-                broadcast_state("speaking")
-                if voice_mode:
-                    speak_response(reply_text)
-                    clear_input_queue()
-                
-                history.append((user_input, reply_text))
-                print(f"Medical_Assisstant: {reply_text}\n")
-                
-            else:
-                # Normal Speech
-                reply_text = agent_response["text"]
-                history.append((user_input, reply_text))
-                print(f"Medical_Assisstant: {reply_text}\n")
-                
-                if voice_mode:
-                    speak_response(reply_text)
-                    clear_input_queue()
-            
-            print("You: ", end="", flush=True) # Ready for next input
+            print("You: ", end="", flush=True)
         except KeyboardInterrupt:
             print("\n\nGoodbye!")
             break

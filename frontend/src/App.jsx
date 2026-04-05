@@ -16,6 +16,8 @@ function App() {
 
   // Language State
   const [language, setLanguage] = useState('en');
+  const languageRef = useRef(language);
+  languageRef.current = language;
 
   // Connect to WebSocket
   useEffect(() => {
@@ -25,6 +27,7 @@ function App() {
     ws.onopen = () => {
       console.log('Connected to Medical Assistant Backend');
       setIsConnected(true);
+      ws.send(JSON.stringify({ type: 'language', language: languageRef.current }));
     };
 
     ws.onmessage = (event) => {
@@ -42,6 +45,12 @@ function App() {
 
     return () => ws.close();
   }, [wsUrl]);
+
+  useEffect(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'language', language }));
+    }
+  }, [language]);
 
   const handleMicClick = () => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -151,8 +160,10 @@ function App() {
 
       <InterSenseSimulator />
 
-      {/* Microphone Trigger Button */}
+      {/* Microphone Trigger Button — backend also listens for wake word "Elysa" */}
       <button
+        type="button"
+        title="Say Elysa or click to speak"
         onClick={handleMicClick}
         style={{
           position: 'absolute',
@@ -182,6 +193,23 @@ function App() {
           <path d="M176 352c53.02 0 96-42.98 96-96V96c0-53.02-42.98-96-96-96S80 42.98 80 96v160c0 53.02 42.98 96 96 96zm160-160h-16c-8.84 0-16 7.16-16 16v48c0 74.8-64.49 134.82-140.79 127.38C96.71 376.89 48 317.11 48 250.3V208c0-8.84-7.16-16-16-16H16c-8.84 0-16 7.16-16 16v40.16c0 89.64 63.97 169.55 152 181.69V464H96c-8.84 0-16 7.16-16 16v16c0 8.84 7.16 16 16 16h160c8.84 0 16-7.16 16-16v-16c0-8.84-7.16-16-16-16h-56v-33.77C285.71 418.47 352 344.9 352 256v-48c0-8.84-7.16-16-16-16z" />
         </svg>
       </button>
+      <p
+        style={{
+          position: 'absolute',
+          bottom: 10,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          margin: 0,
+          fontSize: '0.7rem',
+          color: 'rgba(255,255,255,0.45)',
+          fontFamily: 'sans-serif',
+          pointerEvents: 'none',
+          zIndex: 999,
+          whiteSpace: 'nowrap'
+        }}
+      >
+        Say &ldquo;Elysa&rdquo; or tap mic
+      </p>
     </>
   );
 }
