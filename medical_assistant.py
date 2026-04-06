@@ -24,6 +24,7 @@ try:
     import asyncio
     import threading
     import json
+    import base64
     import queue
     import websockets
     import re
@@ -480,7 +481,7 @@ def get_embedding(text):
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-def query_gemini(messages):
+def query_gemini(messages, voice_wav_bytes=None, voice_language=None):
     """Query Gemini API."""
     if not GEMINI_API_KEY:
         return "Error: GEMINI_API_KEY not configured."
@@ -510,7 +511,24 @@ def query_gemini(messages):
         
     try:
         chat = model.start_chat(history=gemini_history)
-        response = chat.send_message(last_msg["content"])
+        if voice_wav_bytes:
+            # Give Gemini the transcript + original WAV so it can correct STT mistakes.
+            language_hint = voice_language or "auto"
+            text_part = (
+                f"Voice language hint: {language_hint}\n"
+                "User transcript (may contain STT mistakes):\n"
+                f"{last_msg['content']}\n\n"
+                "Please use the attached WAV audio as primary evidence when unclear."
+            )
+            audio_part = {
+                "inline_data": {
+                    "mime_type": "audio/wav",
+                    "data": base64.b64encode(voice_wav_bytes).decode("utf-8"),
+                }
+            }
+            response = chat.send_message([text_part, audio_part])
+        else:
+            response = chat.send_message(last_msg["content"])
         text = response.text.strip()
         # Clean up markdown code blocks if present
         if text.startswith("```json"):
@@ -557,7 +575,7 @@ def retrieve_docs(user_query, k=3):
 # ----------------------------
 # Voice Transcription (Groq)
 # ----------------------------
-def listen_and_transcribe():
+def listen_and_transcribe(return_audio=False):
     """Listen to microphone and transcribe using Groq Whisper."""
     if not sr:
         print("❌ SpeechRecognition not installed.")
@@ -567,10 +585,10 @@ def listen_and_transcribe():
         return None
 
     r = sr.Recognizer()
-    # Optimize VAD for speed
+    # Balance speed + sentence completeness (avoid mid-sentence cutoffs)
     r.energy_threshold = 300  # Default 300, can adjust dynamic
-    r.pause_threshold = 1.2   # Increased to 1.2 for more natural pauses
-    r.non_speaking_duration = 0.5 # Increased stability
+    r.pause_threshold = 1.0   # Allow longer short pauses while speaking
+    r.non_speaking_duration = 0.7  # Keep stream open a bit longer before endpointing
     r.dynamic_energy_threshold = True
 
     try:
@@ -579,8 +597,8 @@ def listen_and_transcribe():
         with sr.Microphone() as source:
             broadcast_state("listening")
             print("\n🎤 Listening... (Speak now!)")
-            # Calibrate faster
-            r.adjust_for_ambient_noise(source, duration=0.4)
+            # Slightly longer calibration improves stability in noisy rooms
+            r.adjust_for_ambient_noise(source, duration=0.3)
             
             # Listen (stops when silence is detected)
             try:
@@ -605,7 +623,10 @@ def listen_and_transcribe():
                 temperature=0,
                 response_format="verbose_json",
             )
-            return transcription.text.strip()
+            transcript_text = transcription.text.strip()
+            if return_audio:
+                return transcript_text, wav_data
+            return transcript_text
             
     except sr.RequestError as e:
         print(f"❌ Microphone error: {e}")
@@ -689,6 +710,9 @@ def speak_response(text):
 ELYSA_WAKE_GREETING_MP3 = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "Elysa", "elysa_greeting.mp3"
 )
+WHATSAPP_ALERT_SENT_MP3 = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "Elysa", "whatsapp_alert_sent.mp3"
+)
 
 
 def play_elysa_wake_greeting():
@@ -718,11 +742,44 @@ def play_elysa_wake_greeting():
     finally:
         broadcast_state("neutral")
 
+def play_whatsapp_alert_sent_prompt():
+    """Play cached WhatsApp alert confirmation (no ElevenLabs call)."""
+    if not os.path.isfile(WHATSAPP_ALERT_SENT_MP3):
+        print(
+            f"⚠️ Cached WhatsApp confirmation missing: {WHATSAPP_ALERT_SENT_MP3}\n"
+            "   Run: python Elysa/download_greeting_audio.py"
+        )
+        return
+    if not pygame:
+        return
+    if not pygame.mixer.get_init():
+        try:
+            pygame.mixer.init(buffer=512)
+        except Exception as e:
+            print(f"⚠️ WhatsApp confirmation: mixer init failed: {e}")
+            return
+    try:
+        broadcast_state("speaking", audio_level=0.8)
+        pygame.mixer.music.load(WHATSAPP_ALERT_SENT_MP3)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy():
+            pygame.time.Clock().tick(10)
+    except Exception as e:
+        print(f"⚠️ WhatsApp confirmation playback failed: {e}")
+    finally:
+        broadcast_state("neutral")
+
 
 # Maximum number of conversation exchanges to keep in history
 MAX_HISTORY_EXCHANGES = 5
 
-def get_response(user_message, history, language=None, system_prompt_append=None):
+def get_response(
+    user_message,
+    history,
+    language=None,
+    system_prompt_append=None,
+    voice_wav_bytes=None,
+):
     """Generate response using RAG pipeline."""
     broadcast_state("thinking")
     if not language:
@@ -735,56 +792,37 @@ def get_response(user_message, history, language=None, system_prompt_append=None
     context_docs = retrieve_docs(user_message)
     context_text = "\n".join(context_docs) if context_docs else "No relevant context found."
 
-    # Persona based on language
-    # Persona based on language
-    if language == "fr":
-        persona = (
-            "Tu es un Assistant Médical spécialisé dans les évanouissements soudains (syncope). "
-            "Ton rôle est de calmer l'utilisateur et de donner des instructions claires et étape par étape. "
-            "Tu es rassurant, direct et professionnel. "
-            "Si l'utilisateur dit qu'il se sent mal, guide-le immédiatement : s'asseoir, s'allonger, lever les jambes. "
-            "Utilise tes outils si nécessaire (alarme). "
-            "Concentre-toi uniquement sur l'urgence médicale."
-        )
-    elif language == "ar":
-        persona = (
-            "أنت مساعد طبي متخصص في حالات الإغماء المفاجئ. "
-            "دورك هو تهدئة المستخدم وإعطاء تعليمات واضحة خطوة بخطوة. "
-            "أنت مطمئن ومباشر ومحترف. "
-            "إذا قال المستخدم إنه يشعر بالدوار، وجهه فورًا: اجلس، استلقِ، ارفع ساقيك. "
-            "استخدم أدواتك عند الضرورة (التنبيه). "
-            "ركز فقط على الحالة الطبية الطارئة."
-        )
-    elif language == "tn":
-        persona = (
-            "انت مساعد طبي (Medical Assistant) مختص في الدوخة والإغماء. "
-            "دورك تتكلم برزانة وتوسع بالك، وتعطي تعليمات واضحة بالدارجة التونسية. "
-            "طمن العبد اللي معاك، وقوله شنوا يعمل بالضبط (يقعد، يتمد، يهز ساقيه). "
-            "ركز كان على صحة السيد اللي معاك. كان لازم، اطلب الاسعاف ولا استعمل التنبيه."
-        )
-    else:  # Default to English
-        persona = (
-            "You are a Medical Assistant specialized in Sudden Fainting (Syncope). "
-            "Your role is to calm the user down and provide clear, step-by-step instructions. "
-            "You are reassuring, direct, and professional. "
-            "If the user says they feel faint, guide them immediately: sit down, lie down, elevate legs. "
-            "Use your tools if necessary (alert sound). "
-            "Focus ONLY on the medical emergency."
-        )
+    # Single English-output persona: understand any input language, always reply in English.
+    persona = (
+        "You are a Medical Assistant specialized in Sudden Fainting (Syncope). "
+        "Your role is to calm the user down and provide clear, step-by-step instructions. "
+        "You are reassuring, direct, and professional. "
+        "If the user says they feel faint, guide them immediately: sit down, lie down, elevate legs. "
+        "Use your tools if necessary (alert sound). "
+        "Focus ONLY on the medical emergency."
+    )
 
     # Build system message with context
     tools_json = json.dumps(TOOLS, indent=2)
     system_message = f"""{persona}
 
+DETECTED_USER_LANGUAGE_HINT (for understanding only, not for output): {language}
+
 INSTRUCTIONS:
 - You are a Medical Assistant.
-- **PRIORITY**: If the user needs immediate attention or an alert, USE THE TOOL.
+- The user may speak or write in any language (Arabic, French, Tunisian Darija, English, etc.). Understand their intent fully.
+- **OUTPUT LANGUAGE**: Always write the JSON `"text"` field for speech in **English only**. Never reply in Arabic, French, or other languages in `"text"`. Tool string fields (e.g. message_text) should also be in English unless a system rule says otherwise.
+- **TOOL-FIRST POLICY (STRICT)**: If any available tool can directly solve or materially improve the user's stated problem, choose a tool action first instead of speech-only advice.
+- **PRIORITY**: If the user needs immediate attention, emergency escalation, or external notification, USE THE TOOL immediately.
+- Prefer `send_whatsapp_alert` when contacting others can improve safety.
+- Prefer `play_alert_sound` when an immediate audible alert can help nearby people assist.
+- Do not ask unnecessary follow-up questions before using a suitable tool in urgent scenarios.
 - **CALM INSTRUCTIONS**: Guide the user step-by-step.
     - `play_alert_sound` = "Signal for help/alert others."
     - `send_whatsapp_alert` = "Notify family/friends."
 - Do NOT mention being a General or Stratageist.
 - Only use context provided.
-- Keep language simple and clear for users.
+- Keep wording simple and clear.
 - Admit missing info.
 - Reject off-topic questions politely.
 - Keep responses <60 words.
@@ -795,8 +833,9 @@ AVAILABLE TOOLS:
 
 RESPONSE FORMAT:
 You must respond in JSON format.
+If a suitable tool exists for the user's stated need, return an action JSON.
 If you want to speak, return:
-{{ "type": "speech", "text": "Your response here" }}
+{{ "type": "speech", "text": "Your response here (English only)" }}
 
 If you want to perform an action, return:
 {{ "type": "action", "name": "tool_name", "args": {{ "arg1": "value" }} }}
@@ -823,9 +862,9 @@ CONVERSATION CONTEXT:
     # Simulate typing
     if __name__ == "__main__":
         print("Medical Assistant is typing...", end="\r")
-        time.sleep(1)
+        
     
-    return query_gemini(messages)
+    return query_gemini(messages, voice_wav_bytes=voice_wav_bytes, voice_language=language)
 
 
 def run_warning_voice_check(heart_rate, language="en"):
@@ -1363,12 +1402,17 @@ def main():
                 for item in to_requeue:
                     INPUT_QUEUE.put(item)
             voice_mode = False
+            voice_wav_bytes = None
             try:
                 if is_voice_cmd:
                     print(f"🎤 Starting voice mode... (Language: {current_language})")
                     if elysa_wake_greeting:
                         play_elysa_wake_greeting()
-                    transcribed_text = listen_and_transcribe()
+                    transcribe_result = listen_and_transcribe(return_audio=True)
+                    if transcribe_result:
+                        transcribed_text, voice_wav_bytes = transcribe_result
+                    else:
+                        transcribed_text = None
                     if not transcribed_text:
                         broadcast_state("neutral")
                         continue
@@ -1376,7 +1420,12 @@ def main():
                     user_input = transcribed_text
                     voice_mode = True
 
-                raw_reply = get_response(user_input, history, language=current_language)
+                raw_reply = get_response(
+                    user_input,
+                    history,
+                    language=current_language,
+                    voice_wav_bytes=voice_wav_bytes,
+                )
 
                 # Debug actual output
                 print(f"DEBUG: Raw Reply: {raw_reply!r}")
@@ -1398,12 +1447,17 @@ def main():
 
                     if result.get("status") == "played":
                         reply_text = "I have sounded the alert."
+                    elif action_name == "send_whatsapp_alert" and result.get("status") == "sent":
+                        reply_text = "Action completed, WhatsApp alert sent."
                     else:
                         reply_text = f"Action completed: {result}"
 
                     broadcast_state("speaking")
                     if voice_mode:
-                        speak_response(reply_text)
+                        if action_name == "send_whatsapp_alert" and result.get("status") == "sent":
+                            play_whatsapp_alert_sent_prompt()
+                        else:
+                            speak_response(reply_text)
                         clear_input_queue()
 
                     history.append((user_input, reply_text))
