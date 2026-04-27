@@ -1,0 +1,50 @@
+Perfusion failure =
+👉 brain doesn’t get enough blood → not enough oxygen delivery → you faint
+
+
+Pre-syncope symptoms often appear when:
+SpO₂ < 85%
+
+Risk zone:
+rapid drop ≥ 3–5% in short time
+continuous downward trend
+
+Oxygen delivery = blood flow × oxygen content
+
+Stage 1 (pre-syncope):
+slow decline
+subtle
+Stage 2 (collapse):
+fast drop
+severe
+
+⚠️ WARNING PATTERN
+baseline → gradual continuous decline
+
+🚨 PRE-SYNCOPE PATTERN
+baseline → gradual decline → no recovery
+
+🔥 HIGH RISK PATTERN
+baseline → gradual decline → sudden sharp drop
+
+
+Oxygen stays stable at first
+Then starts decreasing after ~10 seconds
+Then continues progressively declining
+
+if (
+    gradual_decline and
+    no_recovery
+):
+    risk = "⚠️ pre-syncope"
+
+elif (
+    gradual_decline and
+    sudden_acceleration
+):
+    risk = "🚨 high risk"
+
+elif (
+    small_drop and recovery
+):
+    risk = "✅ normal"
