@@ -200,6 +200,12 @@ facemesh_ready = False
 facemesh_error = None
 facemesh_lock = threading.Lock()
 
+# Debug helpers: allow printing startup errors once for troubleshooting
+FACEMESH_ERROR_REPORTED = False
+MODEL_ERROR_REPORTED = False
+# Progress message shown on-screen while the face model is downloading
+download_progress_msg = None
+
 frame_buffer = deque(maxlen=SEQ_LEN)
 risk_score_ema = None
 high_risk_start = None
@@ -296,8 +302,34 @@ def _init_facemesh_worker():
             raise RuntimeError("MediaPipe FaceLandmarker API is unavailable in this environment.")
 
         FACE_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        # Download with progress hook into a temporary .part file, then atomically replace
+        face_tmp = FACE_MODEL_PATH.with_suffix(FACE_MODEL_PATH.suffix + ".part")
+
+        def _report_hook(block_num, block_size, total_size):
+            try:
+                downloaded = block_num * block_size
+                pct = (downloaded / total_size * 100.0) if total_size else 0.0
+                kb = downloaded // 1024
+                total_kb = (total_size // 1024) if total_size else '?'
+                # update global progress message for on-screen display
+                globals()['download_progress_msg'] = f"Downloading model: {pct:5.1f}% ({kb}KB/{total_kb}KB)"
+                # also print a brief console progress (safe even if QUIET_CONSOLE)
+                print(f"\rDownloading model: {pct:5.1f}% ({kb}KB/{total_kb}KB)", end="", flush=True)
+            except Exception:
+                pass
+
         if not FACE_MODEL_PATH.exists():
-            urllib.request.urlretrieve(FACE_MODEL_URL, FACE_MODEL_PATH)
+            try:
+                print(f"Downloading MediaPipe model → {FACE_MODEL_PATH} (this may take a minute)...")
+                urllib.request.urlretrieve(FACE_MODEL_URL, face_tmp, reporthook=_report_hook)
+                # newline after progress printing
+                print()
+                try:
+                    face_tmp.replace(FACE_MODEL_PATH)
+                except Exception:
+                    face_tmp.rename(FACE_MODEL_PATH)
+            finally:
+                globals()['download_progress_msg'] = None
 
         options = MP_FACE_LANDMARKER_OPTIONS(
             base_options=MP_BASE_OPTIONS(model_asset_path=str(FACE_MODEL_PATH)),
@@ -438,6 +470,16 @@ while cap.isOpened():
     # Runtime readiness and error states.
     if facemesh_error or model_error:
         status, color = "ERROR - startup failed", (0, 0, 220)
+        # Print startup errors once for troubleshooting (avoid repeating every frame)
+        try:
+            if facemesh_error and not FACEMESH_ERROR_REPORTED:
+                print("Facemesh init error:", facemesh_error)
+                FACEMESH_ERROR_REPORTED = True
+            if model_error and not MODEL_ERROR_REPORTED:
+                print("Model load error:", model_error)
+                MODEL_ERROR_REPORTED = True
+        except Exception:
+            pass
 
     elif not facemesh_ready:
         status, color = "Initializing landmarks...", (255, 220, 0)
