@@ -1,0 +1,17 @@
+# Fall Detection - Requirements
+# Install with: pip install -r requirements.txt
+
+#testi b python 3.13 like this in terminal 
+#C:/Users/Hamza/AppData/Local/Programs/Python/Python313/python.exe -m pip install ultralytics tensorflow opencv-python       
+
+# Computer Vision
+opencv-python>=4.8.0
+
+# Pose Estimation (YOLO)
+ultralytics>=8.0.0
+
+# Deep Learning (LSTM model)
+tensorflow>=2.13.0
+
+# Numerical Computing
+numpy>=1.24.0
