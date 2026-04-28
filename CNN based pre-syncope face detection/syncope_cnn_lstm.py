@@ -25,6 +25,7 @@ SCRIPT_START = time.perf_counter()          # before heavy imports so startup ti
 
 import cv2
 import numpy as np
+import h5py
 import threading
 import urllib.request
 import pathlib
@@ -66,8 +67,8 @@ LSTM_MODEL_PATH_H5 = SCRIPT_DIR / "syncope_lstm_v1.h5"
 SEQ_LEN           = 20
 EAR_THRESHOLD     = 0.25
 LSTM_THRESHOLD    = 0.30
-FRAME_THRESHOLD   = 45      # frames of sustained warning to trigger CRITICAL
-WARNING_THRESHOLD = 12      # counter must exceed this for face-loss alarm
+FRAME_THRESHOLD   = 90      # frames of sustained warning to trigger CRITICAL
+WARNING_THRESHOLD = 20      # counter must exceed this for face-loss alarm
 RISK_EMA_ALPHA    = 0.08
 RISK_MAX_STEP     = 0.06
 NORMAL_POSE_CAP   = 0.35
@@ -79,9 +80,11 @@ L_EYE = [33, 160, 158, 133, 153, 144]
 R_EYE = [362, 385, 387, 263, 373, 380]
 
 # ─── OPTIONAL LSTM ───────────────────────────────────────────────────────────
-# Uses .h5 only. If unavailable, app runs in rule-based mode.
+# Loads the trained .h5 weights directly with h5py + NumPy, so TensorFlow is
+# not required at runtime.
 
-model = None    # Keras model (.h5)
+model = None    # Native NumPy weight bundle
+LSTM_MODEL_TYPE = None  # "native"
 
 # Background init state
 models_ready = False
@@ -95,22 +98,66 @@ _landmarker_load_seconds = None
 _model_init_start = None
 
 
+def _read_dataset(file_handle, path):
+    return np.asarray(file_handle[path][()], dtype=np.float32)
+
+
+def _load_native_lstm_weights():
+    with h5py.File(LSTM_MODEL_PATH_H5, "r") as file_handle:
+        return {
+            "lstm1_kernel": _read_dataset(file_handle, "model_weights/lstm/sequential/lstm/lstm_cell/kernel"),
+            "lstm1_recurrent_kernel": _read_dataset(file_handle, "model_weights/lstm/sequential/lstm/lstm_cell/recurrent_kernel"),
+            "lstm1_bias": _read_dataset(file_handle, "model_weights/lstm/sequential/lstm/lstm_cell/bias"),
+            "lstm2_kernel": _read_dataset(file_handle, "model_weights/lstm_1/sequential/lstm_1/lstm_cell/kernel"),
+            "lstm2_recurrent_kernel": _read_dataset(file_handle, "model_weights/lstm_1/sequential/lstm_1/lstm_cell/recurrent_kernel"),
+            "lstm2_bias": _read_dataset(file_handle, "model_weights/lstm_1/sequential/lstm_1/lstm_cell/bias"),
+            "dense_kernel": _read_dataset(file_handle, "model_weights/dense/sequential/dense/kernel"),
+            "dense_bias": _read_dataset(file_handle, "model_weights/dense/sequential/dense/bias"),
+            "out_kernel": _read_dataset(file_handle, "model_weights/dense_1/sequential/dense_1/kernel"),
+            "out_bias": _read_dataset(file_handle, "model_weights/dense_1/sequential/dense_1/bias"),
+        }
+
+
+def _sigmoid(x):
+    x = np.clip(x, -60.0, 60.0)
+    return 1.0 / (1.0 + np.exp(-x))
+
+
+def _lstm_layer_forward(inputs, kernel, recurrent_kernel, bias, return_sequences):
+    units = recurrent_kernel.shape[0]
+    hidden = np.zeros(units, dtype=np.float32)
+    cell = np.zeros(units, dtype=np.float32)
+    outputs = []
+
+    for step in inputs:
+        z = np.dot(step, kernel) + np.dot(hidden, recurrent_kernel) + bias
+        i, f, c_bar, o = np.split(z, 4)
+        i = _sigmoid(i)
+        f = _sigmoid(f)
+        c_bar = np.tanh(c_bar)
+        o = _sigmoid(o)
+        cell = f * cell + i * c_bar
+        hidden = o * np.tanh(cell)
+        if return_sequences:
+            outputs.append(hidden.copy())
+
+    if return_sequences:
+        return np.asarray(outputs, dtype=np.float32)
+    return hidden
+
+
 def init_lstm_model():
-    """Load the optional LSTM model independently."""
-    global model, _lstm_ready, _lstm_load_seconds
+    """Load the optional LSTM model directly from HDF5 weights."""
+    global model, _lstm_ready, _lstm_load_seconds, LSTM_MODEL_TYPE
     start = time.perf_counter()
     try:
         if LSTM_MODEL_PATH_H5.exists():
-            try:
-                os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-                from tensorflow.keras.models import load_model
-                print("Loading Keras .h5 model ...", end=" ", flush=True)
-                model = load_model(str(LSTM_MODEL_PATH_H5), compile=False)
-                print("done.")
-            except Exception as e:
-                print(f"Could not load Keras model ({e}). Using rule-based detection.")
+            print("Loading native LSTM weights ...", end=" ", flush=True)
+            model = _load_native_lstm_weights()
+            LSTM_MODEL_TYPE = "native"
+            print("done.")
         else:
-            print("No .h5 LSTM model found. Using rule-based detection.")
+            print("No LSTM model found. Using rule-based detection.")
 
         _lstm_ready = True
         _lstm_load_seconds = time.perf_counter() - start
@@ -160,22 +207,47 @@ def mark_models_ready_if_done():
 
 # ─── CAMERA ──────────────────────────────────────────────────────────────────
 
-print("Opening camera ...", end=" ", flush=True)
-# CAP_DSHOW skips DirectShow negotiation on Windows — noticeably faster open
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) if sys.platform == "win32" else cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-if not cap.isOpened():
-    sys.exit("\nERROR: Could not open camera.")
-print("done.")
+def open_camera():
+    """Open the webcam with a short warm-up so the first usable frame arrives faster."""
+    print("Opening camera ...", end=" ", flush=True)
+    start = time.perf_counter()
 
-# Start background initialization now that camera opened
+    candidates = [cv2.CAP_DSHOW, cv2.CAP_MSMF] if sys.platform == "win32" else [None]
+    for backend in candidates:
+        cap_obj = cv2.VideoCapture(0, backend) if backend is not None else cv2.VideoCapture(0)
+        if not cap_obj.isOpened():
+            cap_obj.release()
+            continue
+
+        cap_obj.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap_obj.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        cap_obj.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+        warmup_deadline = time.perf_counter() + 2.0
+        while time.perf_counter() < warmup_deadline:
+            cap_obj.grab()
+            ok, _ = cap_obj.read()
+            if ok:
+                print("done.")
+                print(f"Camera ready in {time.perf_counter() - start:.2f}s")
+                return cap_obj
+
+        cap_obj.release()
+
+    sys.exit("\nERROR: Could not open camera.")
+
+
+# Start face-landmarker initialization as early as possible so cold-start time
+# overlaps with camera setup.
 print("Starting background initialization of models...", end=" ", flush=True)
 _model_init_start = time.perf_counter()
-t_lstm = threading.Thread(target=init_lstm_model, daemon=True)
 t_face = threading.Thread(target=init_face_landmarker, daemon=True)
-t_lstm.start()
 t_face.start()
+
+cap = open_camera()
+
+t_lstm = threading.Thread(target=init_lstm_model, daemon=True)
+t_lstm.start()
 print("started.")
 
 # ─── FEATURE EXTRACTION ──────────────────────────────────────────────────────
@@ -205,12 +277,32 @@ def lstm_predict(buf):
         return None
     window = list(buf)
     ears   = [f[0] for f in window]
-    blinks = sum(
+    blink_count = sum(
         1 for j in range(1, len(ears))
         if ears[j - 1] >= EAR_THRESHOLD and ears[j] < EAR_THRESHOLD
     )
-    seq = np.array([f + [blinks] for f in window], dtype=np.float32)[np.newaxis, ...]
-    return float(model.predict(seq, verbose=0)[0][0])
+    blink_rate = blink_count / max(1, len(ears) - 1)
+    seq = np.array([f + [blink_rate] for f in window], dtype=np.float32)
+    
+    if LSTM_MODEL_TYPE == "native":
+        hidden_1 = _lstm_layer_forward(
+            seq,
+            model["lstm1_kernel"],
+            model["lstm1_recurrent_kernel"],
+            model["lstm1_bias"],
+            return_sequences=True,
+        )
+        hidden_2 = _lstm_layer_forward(
+            hidden_1,
+            model["lstm2_kernel"],
+            model["lstm2_recurrent_kernel"],
+            model["lstm2_bias"],
+            return_sequences=False,
+        )
+        dense = np.maximum(0.0, np.dot(hidden_2, model["dense_kernel"]) + model["dense_bias"])
+        return float(_sigmoid(np.dot(dense, model["out_kernel"]) + model["out_bias"])[0])
+
+    return None
 
 # ─── MAIN LOOP ───────────────────────────────────────────────────────────────
 
@@ -273,7 +365,9 @@ while cap.isOpened():
 
         if raw_prob is not None:
             if risk_ema is None:
-                risk_ema = raw_prob
+                # A single blink can be the first time the model emits a score.
+                # Start conservatively so one blink does not appear as an instant spike.
+                risk_ema = min(raw_prob, NORMAL_POSE_CAP) if not head_slumped else raw_prob
             else:
                 target   = RISK_EMA_ALPHA * raw_prob + (1 - RISK_EMA_ALPHA) * risk_ema
                 delta    = float(np.clip(target - risk_ema, -RISK_MAX_STEP, RISK_MAX_STEP))
