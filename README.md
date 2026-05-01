@@ -1,10 +1,10 @@
-# 🛡️ Fall Detection — BiLSTM + Attention
+#  Fall Detection — BiLSTM + Attention
 
 Détection de chute en temps réel via webcam, combinant un modèle LSTM bidirectionnel entraîné sur **URFD + Le2i** et une heuristique géométrique MediaPipe.
 
 Détecte deux cas :
-- 👤 **Personne déjà au sol** (effondrée / évanouie)
-- 🎬 **Mouvement de chute** en cours
+-  **Personne déjà au sol** (effondrée / évanouie)
+-  **Mouvement de chute** en cours
 
 ---
 
@@ -22,7 +22,7 @@ fall-detection/
 
 ---
 
-## 🚀 Étapes
+##  Étapes
 
 ### 1. Entraînement sur Kaggle
 
@@ -60,7 +60,7 @@ python realtime_fall_detector.py
 
 ---
 
-## 🎮 Contrôles
+##  Contrôles
 
 | Touche | Action |
 |--------|--------|
@@ -70,7 +70,7 @@ python realtime_fall_detector.py
 
 ---
 
-## ⚙️ Paramètres (dans `realtime_fall_detector.py`)
+##  Paramètres (dans `realtime_fall_detector.py`)
 
 | Paramètre | Défaut | Description |
 |-----------|--------|-------------|
