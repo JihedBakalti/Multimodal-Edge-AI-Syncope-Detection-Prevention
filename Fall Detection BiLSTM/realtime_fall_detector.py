@@ -13,6 +13,9 @@ STRUCTURE DU DOSSIER:
 INSTALLATION (terminal VSCode):
     pip install torch torchvision mediapipe opencv-python numpy
 
+    MediaPipe Tasks (Python 3.13+) : le fichier pose_landmarker_full.task est
+    téléchargé automatiquement au premier lancement depuis le CDN Google.
+
 LANCER:
     python realtime_fall_detector.py
 """
@@ -25,14 +28,33 @@ from collections import deque
 import time
 import sys
 import os
+import urllib.request
+
+from mediapipe.tasks.python import BaseOptions
+from mediapipe.tasks.python.vision import (
+    PoseLandmarker,
+    PoseLandmarkerOptions,
+    PoseLandmarksConnections,
+    RunningMode,
+    drawing_utils as mp_drawing,
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  CONFIGURATION — ajuste ces valeurs si trop de false positives
 # ══════════════════════════════════════════════════════════════════════════════
 
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 MODEL_PATH = "fall_lstm_traced.pt"
 MEAN_PATH  = "norm_mean.npy"
 STD_PATH   = "norm_std.npy"
+
+# Modèle pose (Tasks API) — équivalent approximatif à model_complexity=1
+POSE_TASK_FILE = os.path.join(_SCRIPT_DIR, "pose_landmarker_full.task")
+POSE_TASK_URL  = (
+    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
+    "pose_landmarker_full/float16/latest/pose_landmarker_full.task"
+)
 
 WINDOW         = 30     # doit correspondre au notebook (WINDOW=30)
 INPUT_DIM      = 99     # 33 joints × 3 coords
@@ -70,19 +92,46 @@ def load_model():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  POSE EXTRACTION
+#  MediaPipe Pose (Tasks API) — fichier .task
 # ══════════════════════════════════════════════════════════════════════════════
 
-def extract_keypoints(frame_bgr, pose_model):
-    """Retourne (vecteur 99-dim, landmarks ou None)."""
-    rgb    = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-    result = pose_model.process(rgb)
+
+def ensure_pose_landmarker_asset():
+    """Télécharge le bundle pose landmarker si absent (requis hors mp.solutions)."""
+    if os.path.isfile(POSE_TASK_FILE):
+        return
+    print(f"\n[download] Pose landmarker bundle -> {POSE_TASK_FILE}")
+    try:
+        urllib.request.urlretrieve(POSE_TASK_URL, POSE_TASK_FILE)
+        print("[OK] pose_landmarker_full.task saved.\n")
+    except Exception as exc:
+        print(f"\n[ERROR] Download failed: {exc}")
+        print(f"    Get it manually:\n    {POSE_TASK_URL}")
+        print(f"    Save as: {POSE_TASK_FILE}\n")
+        sys.exit(1)
+
+
+class _LandmarksCompat:
+    """Aligne la liste Tasks sur l'accès `.landmark[i]` utilisé par is_on_floor."""
+
+    __slots__ = ("landmark",)
+
+    def __init__(self, normalized_landmarks):
+        self.landmark = normalized_landmarks
+
+
+def extract_keypoints(frame_bgr, pose_landmarker, timestamp_ms):
+    """Retourne (vecteur 99-dim, wrapper landmarks ou None)."""
+    rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+    rgb = np.ascontiguousarray(rgb)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+    result   = pose_landmarker.detect_for_video(mp_image, timestamp_ms)
+
     if result.pose_landmarks:
-        kp = np.array(
-            [[lm.x, lm.y, lm.z] for lm in result.pose_landmarks.landmark],
-            dtype=np.float32
-        ).flatten()
-        return kp, result.pose_landmarks
+        plist = result.pose_landmarks[0]
+        kp = np.array([[lm.x, lm.y, lm.z] for lm in plist], dtype=np.float32).flatten()
+        return kp, _LandmarksCompat(plist)
+
     return np.zeros(INPUT_DIM, dtype=np.float32), None
 
 
@@ -271,14 +320,16 @@ def main():
 
     model, norm_mean, norm_std = load_model()
 
-    mp_pose_module = mp.solutions.pose
-    mp_draw        = mp.solutions.drawing_utils
-    pose_model     = mp_pose_module.Pose(
-        static_image_mode         = False,
-        model_complexity          = 1,
-        min_detection_confidence  = 0.5,
-        min_tracking_confidence   = 0.5,
+    ensure_pose_landmarker_asset()
+    pose_options = PoseLandmarkerOptions(
+        base_options=BaseOptions(model_asset_path=POSE_TASK_FILE),
+        running_mode=RunningMode.VIDEO,
+        num_poses=1,
+        min_pose_detection_confidence=0.5,
+        min_pose_presence_confidence=0.5,
+        min_tracking_confidence=0.5,
     )
+    pose_landmarker = PoseLandmarker.create_from_options(pose_options)
 
     frame_buffer  = deque(maxlen=WINDOW)
     confirm_count = 0
@@ -287,6 +338,7 @@ def main():
     prev_t        = time.time()
     fps           = 0.0
     shot_idx      = 0
+    video_ts_ms   = 0
 
     # Ouvre la webcam (essaie 0, puis 1 si échec)
     cap = None
@@ -319,16 +371,19 @@ def main():
         prev_t = now
 
         # ── Pose ──────────────────────────────────────────────────────────
-        kp, landmarks = extract_keypoints(frame, pose_model)
+        kp, landmarks = extract_keypoints(frame, pose_landmarker, video_ts_ms)
+        video_ts_ms += 33  # horodatage monotone (~30 fps) pour VIDEO mode
+
         frame_buffer.append(kp)
 
         # Squelette
         if landmarks:
-            mp_draw.draw_landmarks(
-                frame, landmarks,
-                mp_pose_module.POSE_CONNECTIONS,
-                mp_draw.DrawingSpec(color=(0, 210, 255), thickness=2, circle_radius=3),
-                mp_draw.DrawingSpec(color=(0, 150, 200), thickness=2),
+            mp_drawing.draw_landmarks(
+                frame,
+                landmarks.landmark,
+                PoseLandmarksConnections.POSE_LANDMARKS,
+                mp_drawing.DrawingSpec(color=(0, 210, 255), thickness=2, circle_radius=3),
+                mp_drawing.DrawingSpec(color=(0, 150, 200), thickness=2),
             )
 
         # ── Détection statique sol ────────────────────────────────────────
@@ -394,7 +449,7 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
-    pose_model.close()
+    pose_landmarker.close()
     print("✅  Programme terminé.")
 
 
