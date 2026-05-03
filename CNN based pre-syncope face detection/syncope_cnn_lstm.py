@@ -64,12 +64,13 @@ LSTM_MODEL_PATH_H5 = SCRIPT_DIR / "syncope_lstm_v1.h5"
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 
-SEQ_LEN           = 20
+# Shorter window = first LSTM score sooner (~10 frames vs 20). Model still runs; accuracy may shift slightly.
+SEQ_LEN           = 10
 EAR_THRESHOLD     = 0.25
 LSTM_THRESHOLD    = 0.30
 FRAME_THRESHOLD   = 90      # frames of sustained warning to trigger CRITICAL
 WARNING_THRESHOLD = 20      # counter must exceed this for face-loss alarm
-RISK_EMA_ALPHA    = 0.08
+RISK_EMA_ALPHA    = 0.15
 RISK_MAX_STEP     = 0.06
 NORMAL_POSE_CAP   = 0.35
 HIGH_RISK_LEVEL   = 0.99
@@ -146,6 +147,14 @@ def _lstm_layer_forward(inputs, kernel, recurrent_kernel, bias, return_sequences
     return hidden
 
 
+def _warmup_face_landmarker(landmarker, mp_mod, iterations=5):
+    """Prime TFLite / graph so the first real webcam frame avoids multi-second cold inference."""
+    dummy = np.zeros((480, 640, 3), dtype=np.uint8)
+    mp_image = mp_mod.Image(image_format=mp_mod.ImageFormat.SRGB, data=dummy)
+    for i in range(iterations):
+        landmarker.detect_for_video(mp_image, i * 33)
+
+
 def init_lstm_model():
     """Load the optional LSTM model directly from HDF5 weights."""
     global model, _lstm_ready, _lstm_load_seconds, LSTM_MODEL_TYPE
@@ -185,10 +194,12 @@ def init_face_landmarker():
             output_facial_transformation_matrixes=False,
         )
         face_landmarker = mp.tasks.vision.FaceLandmarker.create_from_options(_opts)
+        print("warming up ...", end=" ", flush=True)
+        _warmup_face_landmarker(face_landmarker, mp)
         print("done.")
         _landmarker_ready = True
         _landmarker_load_seconds = time.perf_counter() - start
-        print(f"Face landmarker loaded in {_landmarker_load_seconds:.2f}s")
+        print(f"Face landmarker ready in {_landmarker_load_seconds:.2f}s")
     except Exception as e:
         init_error = e
         print(f"Face landmarker init failed: {e}")
@@ -237,17 +248,15 @@ def open_camera():
     sys.exit("\nERROR: Could not open camera.")
 
 
-# Start face-landmarker initialization as early as possible so cold-start time
-# overlaps with camera setup.
+# Start both loads before the camera so LSTM I/O overlaps face init + webcam warm-up.
 print("Starting background initialization of models...", end=" ", flush=True)
 _model_init_start = time.perf_counter()
 t_face = threading.Thread(target=init_face_landmarker, daemon=True)
 t_face.start()
-
-cap = open_camera()
-
 t_lstm = threading.Thread(target=init_lstm_model, daemon=True)
 t_lstm.start()
+
+cap = open_camera()
 print("started.")
 
 # ─── FEATURE EXTRACTION ──────────────────────────────────────────────────────
