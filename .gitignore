@@ -205,3 +205,42 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# --- JS / Platform frontend ---
+node_modules/
+**/node_modules/
+**/dist/
+**/.vite/
+
+# --- ML & model artifacts (weights, pickles, download caches) ---
+# Hugging Face / similar when cached inside the repo
+**/.cache/
+**/.huggingface/
+
+# Under MODELS: runtime download dirs and common weight formats
+MODELS/**/.cache/
+MODELS/**/*.pt
+MODELS/**/*.pth
+MODELS/**/*.onnx
+MODELS/**/*.safetensors
+MODELS/**/*.ckpt
+MODELS/**/*.joblib
+MODELS/**/*.pkl
+MODELS/**/*.h5
+MODELS/**/weights/
+MODELS/**/checkpoints/
+MODELS/**/runs/
+MODELS/**/wandb/
+
+# PyTorch / torchvision cache if created under the project
+**/.torch/
+
+# Training & experiment tooling (often large)
+wandb/
+lightning_logs/
+runs/
+.mlflow/
+
+# OS
+.DS_Store
+Thumbs.db

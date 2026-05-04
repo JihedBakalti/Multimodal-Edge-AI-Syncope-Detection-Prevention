@@ -1,0 +1,14 @@
+{
+  "critical_detected": true,
+  "cameras_critical": [
+    0
+  ],
+  "camera_indices_opened": [
+    0
+  ],
+  "max_risk_score": 0.5923,
+  "counter": 90,
+  "duration_seconds": 45,
+  "camera_index": 0,
+  "early_exit_critical": true
+}

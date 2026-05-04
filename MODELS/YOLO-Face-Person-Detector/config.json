@@ -1,0 +1,24 @@
+{
+    "architectures": [
+      "YOLOV8ForObjectDetection"
+    ],
+    "auto_map": {
+      "AutoConfig": "configuration_yolo.YoloV8Config",
+      "AutoModel": "modeling_yolo.YOLOV8ForObjectDetection"
+    },
+
+    "names": {
+      "0": "person",
+      "1": "face"
+    },
+
+    "model_config": "yolov8x.yaml",
+    "num_classes": 2,
+    "task": "detect",
+    "input_size": 640,
+
+    "model_type": "yolov8",
+    "torch_dtype": "float16",
+    "transformers_version": "4.57.1",
+    "verbose": 0
+  }

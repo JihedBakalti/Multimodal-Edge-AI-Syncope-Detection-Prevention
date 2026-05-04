@@ -14,15 +14,24 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 PROMPTS = [
     (
-        "hello , I am Elysa your medical Assisstant , How can i help you ?",
+        "Hello, I am Elysa, your medical assistant. How can I help you?",
         "elysa_greeting.mp3",
     ),
     (
-        "Action completed , WhatsApp alert sent",
+        "Action completed. WhatsApp alert sent.",
         "whatsapp_alert_sent.mp3",
     ),
+    # English only: user may say thanks in any language; assistant always replies in English.
+    (
+        "You're welcome. I'm right here if you need anything else.",
+        "thanks_reply_en.mp3",
+    ),
+    (
+        "A critical fainting episode is detected. Automatic escalation is starting.",
+        "critical_fainting_escalation.mp3",
+    ),
 ]
-VOICE_ID = "nPczCjzI2devNBz1zQrb"
+VOICE_ID = "Xb7hH8MSUJpSbSDYk0k2"
 MODEL_ID = "eleven_multilingual_v2"
 
 

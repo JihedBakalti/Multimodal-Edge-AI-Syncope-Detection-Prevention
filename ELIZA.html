@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>ELIZA — Medical Voice Agent Decision Tree</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0d14;
+    font-family: 'Courier New', monospace;
+    padding: 32px 16px 48px;
+  }
+  h1 {
+    text-align: center;
+    color: #e0e8ff;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .sub {
+    text-align: center;
+    color: #4a5070;
+    font-size: 12px;
+    letter-spacing: 1px;
+    margin-bottom: 24px;
+  }
+  svg { display: block; margin: 0 auto; overflow: visible; }
+
+  .save-tip { text-align:center; color:#2a3050; font-size:11px; font-family:monospace; margin-top:24px; }
+</style>
+</head>
+<body>
+
+<h1>⬡ ELIZA — MEDICAL VOICE AGENT ORCHESTRATOR</h1>
+<p class="sub">FULL DECISION TREE · RAG-ENHANCED · MULTILINGUAL · WEARABLE-AUTOMATED</p>
+
+<svg width="1400" height="2700" viewBox="0 0 1400 2700">
+<defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M1 1L9 5L1 9" fill="none" stroke="#2a3450" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M1 1L9 5L1 9" fill="none" stroke="#cc3333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arr-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M1 1L9 5L1 9" fill="none" stroke="#22aa55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arr-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M1 1L9 5L1 9" fill="none" stroke="#aa6622" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arr-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M1 1L9 5L1 9" fill="none" stroke="#8855ee" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arr-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M1 1L9 5L1 9" fill="none" stroke="#1db89a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<!-- ═══════════════════════════════════════════
+     STYLES via inline on every element
+     Color system:
+       teal/cyan  = ELIZA core / voice path   #1db89a / #0d2a28 / #1a6b5e
+       blue       = wearable / sensor          #2244aa / #0d1a2e / #1a4a80
+       purple     = AI models / RAG            #6644cc / #1a1030 / #4a2a80
+       pink/rose  = multilingual               #cc4488 / #2a0d1a / #882244
+       red        = escalation / alert         #cc2222 / #2a0d0d / #801a1a
+       amber      = logging                    #cc7722 / #281a06 / #7a4a0a
+       gray       = neutral / resume           #3a4466 / #141a28 / #2e3450
+═══════════════════════════════════════════ -->
+
+<!-- ══════════════════════════════════════════
+     SECTION LABEL helper: dashed line + text
+══════════════════════════════════════════ -->
+
+<!-- ─────────────────────────────────────────
+     TRIGGER ROW  y=40..100
+───────────────────────────────────────── -->
+
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" letter-spacing="2" fill="#3a4466" x="700" y="32" text-anchor="middle">── TRIGGERS ──</text>
+
+<!-- Voice trigger -->
+<rect x="40" y="40" width="220" height="64" rx="8" fill="#0d2a28" stroke="#1a6b5e" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#1db89a" x="150" y="63" text-anchor="middle">🎤 VOICE TRIGGER</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="150" y="78" text-anchor="middle">Say "Eliza" to activate</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="150" y="91" text-anchor="middle">Hands-free, anytime</text>
+
+<!-- ELIZA core center -->
+<rect x="490" y="40" width="420" height="64" rx="8" fill="#0d2a28" stroke="#1db89a" stroke-width="2"/>
+<text font-family="'Courier New',monospace" font-size="14" font-weight="700" fill="#1db89a" x="700" y="65" text-anchor="middle">✦ ELIZA ORCHESTRATOR</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="700" y="80" text-anchor="middle">Medical voice agent · LLM-powered core</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="700" y="93" text-anchor="middle">RAG-enhanced · Multilingual · Wearable + Camera integration</text>
+
+<!-- Wearable trigger -->
+<rect x="1140" y="40" width="220" height="64" rx="8" fill="#0d1a2e" stroke="#1a4a80" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#5588ee" x="1250" y="63" text-anchor="middle">⌚ WEARABLE DEVICE</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="1250" y="78" text-anchor="middle">Heart rate + SpO₂</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="1250" y="91" text-anchor="middle">Continuous real-time stream</text>
+
+<!-- Voice → ELIZA -->
+<line x1="260" y1="72" x2="490" y2="72" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+<!-- Wearable → ELIZA -->
+<line x1="1140" y1="72" x2="910" y2="72" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<!-- ELIZA splits: left voice path at x=200, right wearable at x=1100 -->
+<line x1="560" y1="104" x2="560" y2="124" stroke="#2a3450" stroke-width="1.5" fill="none"/>
+<line x1="560" y1="124" x2="200" y2="124" stroke="#2a3450" stroke-width="1.5" fill="none"/>
+<line x1="200" y1="124" x2="200" y2="156" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<line x1="840" y1="104" x2="840" y2="124" stroke="#2a3450" stroke-width="1.5" fill="none"/>
+<line x1="840" y1="124" x2="1100" y2="124" stroke="#2a3450" stroke-width="1.5" fill="none"/>
+<line x1="1100" y1="124" x2="1100" y2="156" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" letter-spacing="2" fill="#3a4466" x="200" y="148" text-anchor="middle">── VOICE PATH ──</text>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" letter-spacing="2" fill="#3a4466" x="1100" y="148" text-anchor="middle">── AUTOMATED PATH ──</text>
+
+<!-- ══════════════════════════════════════════
+     ██ LEFT COLUMN — VOICE PATH  x=200
+══════════════════════════════════════════ -->
+
+<!-- Step 1: Voice received -->
+<rect x="60" y="156" width="280" height="64" rx="8" fill="#0d2a28" stroke="#1a6b5e" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#1db89a" x="200" y="179" text-anchor="middle">🗣 VOICE RECEIVED</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="200" y="195" text-anchor="middle">Ask about fainting / give orders</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="200" y="208" text-anchor="middle">to alert contacts or get guidance</text>
+
+<line x1="200" y1="220" x2="200" y2="252" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<!-- ── MULTILINGUAL PIPELINE BOX (highlight) -->
+<rect x="20" y="252" width="360" height="180" rx="10" fill="#1a0820" stroke="#882244" stroke-width="1.5" stroke-dasharray="6 3"/>
+<text font-family="'Courier New',monospace" font-size="9" font-weight="700" letter-spacing="1" fill="#cc4488" x="200" y="270" text-anchor="middle">── MULTILINGUAL PIPELINE ──</text>
+
+<!-- Step 2: Transcription -->
+<rect x="40" y="278" width="320" height="64" rx="8" fill="#2a0d1a" stroke="#882244" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#ee55aa" x="200" y="300" text-anchor="middle">🌐 VOICE TRANSCRIPTION</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#aa7788" x="200" y="315" text-anchor="middle">ASR model detects language automatically</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#aa7788" x="200" y="328" text-anchor="middle">Supports all languages incl. local dialects</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#aa7788" x="200" y="341" text-anchor="middle">Raw voice audio preserved in parallel</text>
+
+<line x1="200" y1="342" x2="200" y2="362" stroke="#882244" stroke-width="1.5" fill="none" marker-end="url(#arr-purple)"/>
+
+<!-- Step 3: RAG Enhancement -->
+<rect x="40" y="362" width="320" height="64" rx="8" fill="#1a1030" stroke="#6644cc" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#aa77ff" x="200" y="384" text-anchor="middle">📚 RAG ENHANCEMENT</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#887799" x="200" y="399" text-anchor="middle">Transcript embedded → vector search</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#887799" x="200" y="412" text-anchor="middle">Medical knowledge base retrieved</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#887799" x="200" y="425" text-anchor="middle">Context enriched for LLM response</text>
+
+<!-- end of multilingual box -->
+
+<line x1="200" y1="432" x2="200" y2="464" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<!-- Step 4: LLM intent -->
+<rect x="60" y="464" width="280" height="64" rx="8" fill="#0d2a1a" stroke="#22aa66" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#33cc88" x="200" y="487" text-anchor="middle">🧠 LLM INTENT + RESPONSE</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="200" y="502" text-anchor="middle">RAG context + transcript understood</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="200" y="515" text-anchor="middle">Routes to correct tool or answer</text>
+
+<line x1="200" y1="528" x2="200" y2="560" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<!-- Step 5: Dual output -->
+<rect x="20" y="560" width="360" height="100" rx="10" fill="#0d1018" stroke="#882244" stroke-width="1.5" stroke-dasharray="6 3"/>
+<text font-family="'Courier New',monospace" font-size="9" font-weight="700" letter-spacing="1" fill="#cc4488" x="200" y="578" text-anchor="middle">── DUAL OUTPUT (MULTILINGUAL) ──</text>
+
+<rect x="36" y="586" width="152" height="64" rx="8" fill="#2a0d1a" stroke="#882244" stroke-width="1.2"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#ee55aa" x="112" y="607" text-anchor="middle">📝 TEXT RESPONSE</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#aa7788" x="112" y="621" text-anchor="middle">LLM answer in detected</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#aa7788" x="112" y="633" text-anchor="middle">language via RAG context</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#aa7788" x="112" y="645" text-anchor="middle">Medically accurate</text>
+
+<rect x="196" y="586" width="172" height="64" rx="8" fill="#2a0d1a" stroke="#cc4488" stroke-width="1.2"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#ff77bb" x="282" y="607" text-anchor="middle">🎙 RAW VOICE SENT</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#aa7788" x="282" y="621" text-anchor="middle">Original audio preserved</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#aa7788" x="282" y="633" text-anchor="middle">Sent for local dialect /</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#aa7788" x="282" y="645" text-anchor="middle">cultural compatibility</text>
+
+<line x1="200" y1="660" x2="200" y2="692" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<!-- Step 6: Tool execution -->
+<rect x="60" y="692" width="280" height="80" rx="8" fill="#0d2a28" stroke="#1a6b5e" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#1db89a" x="200" y="715" text-anchor="middle">⚙️ TOOL EXECUTION</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="200" y="731" text-anchor="middle">· Alert friends / family / doctor</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="200" y="745" text-anchor="middle">· Answer fainting guidance (RAG-backed)</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="200" y="759" text-anchor="middle">· Provide multilingual first-aid info</text>
+
+<line x1="200" y1="772" x2="200" y2="804" stroke="#aa6622" stroke-width="1.5" fill="none" marker-end="url(#arr-amber)"/>
+
+<rect x="60" y="804" width="280" height="44" rx="8" fill="#281a06" stroke="#7a4a0a" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#cc8833" x="200" y="823" text-anchor="middle">📋 ACTION LOGGED</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="200" y="838" text-anchor="middle">Instructions, outputs, voice scores stored</text>
+
+<!-- ══════════════════════════════════════════
+     RAG KNOWLEDGE BASE — floating side panel
+══════════════════════════════════════════ -->
+<!-- Vertical dashed line from RAG box to KB -->
+<rect x="20" y="900" width="360" height="140" rx="10" fill="#100c28" stroke="#4a2a80" stroke-width="1.5" stroke-dasharray="6 3"/>
+<text font-family="'Courier New',monospace" font-size="9" font-weight="700" letter-spacing="1" fill="#8855ee" x="200" y="918" text-anchor="middle">── RAG KNOWLEDGE BASE ──</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#6655aa" x="200" y="934" text-anchor="middle">📖 Medical protocols &amp; first-aid guidelines</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#6655aa" x="200" y="950" text-anchor="middle">💊 Drug interactions &amp; dosage references</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#6655aa" x="200" y="966" text-anchor="middle">🫀 Cardiology &amp; syncope clinical data</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#6655aa" x="200" y="982" text-anchor="middle">🌍 Multilingual medical terminology</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#6655aa" x="200" y="998" text-anchor="middle">🏥 Patient history (per-user context)</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#6655aa" x="200" y="1014" text-anchor="middle">📋 Emergency contact protocols</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#6655aa" x="200" y="1030" text-anchor="middle">Vector DB · Embeddings · Semantic search</text>
+
+<!-- Dashed connector RAG box ↔ RAG enhancement step -->
+<line x1="200" y1="426" x2="200" y2="470" stroke="#6644cc" stroke-width="0.8" stroke-dasharray="4 2" fill="none"/>
+<!-- Already flowing through, just show connection to KB panel below -->
+<line x1="200" y1="848" x2="200" y2="900" stroke="#6644cc" stroke-width="0.8" stroke-dasharray="4 2" fill="none"/>
+<text font-family="'Courier New',monospace" font-size="8" fill="#4a2a80" x="208" y="876">queries KB</text>
+
+<!-- ══════════════════════════════════════════
+     ██ RIGHT COLUMN — AUTOMATED PATH  x=1100
+══════════════════════════════════════════ -->
+
+<!-- ML anomaly detection -->
+<rect x="960" y="156" width="280" height="80" rx="8" fill="#1a1030" stroke="#6644cc" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#8866ee" x="1100" y="179" text-anchor="middle">📊 ML ANOMALY DETECTION</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="1100" y="195" text-anchor="middle">Medically studied thresholds</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="1100" y="208" text-anchor="middle">HR + SpO₂ pattern &amp; change analysis</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="1100" y="221" text-anchor="middle">Detects sudden / sustained anomalies</text>
+
+<line x1="1100" y1="236" x2="1100" y2="276" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<!-- DECISION 1: Anomaly detected? -->
+<polygon points="1100,276 1220,326 1100,376 980,326" fill="#0d1530" stroke="#3355cc" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#6699ff" x="1100" y="322" text-anchor="middle">ANOMALY</text>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#6699ff" x="1100" y="336" text-anchor="middle">DETECTED?</text>
+
+<!-- NO → resume (right) -->
+<line x1="1220" y1="326" x2="1290" y2="326" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc4444" x="1234" y="320">NO</text>
+<rect x="1290" y="298" width="90" height="56" rx="8" fill="#141a28" stroke="#2e3450" stroke-width="1"/>
+<text font-family="'Courier New',monospace" font-size="9" font-weight="700" fill="#3a4488" x="1335" y="322" text-anchor="middle">🔄 RESUME</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#2a3460" x="1335" y="336" text-anchor="middle">MONITOR</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#2a3460" x="1335" y="348" text-anchor="middle">continue</text>
+<!-- loop back -->
+<line x1="1380" y1="326" x2="1390" y2="326" stroke="#2a3450" stroke-width="1.2" fill="none"/>
+<line x1="1390" y1="326" x2="1390" y2="196" stroke="#2a3450" stroke-width="1.2" fill="none"/>
+<line x1="1390" y1="196" x2="1240" y2="196" stroke="#2a3450" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+
+<!-- YES ↓ -->
+<line x1="1100" y1="376" x2="1100" y2="416" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#22cc77" x="1108" y="400">YES</text>
+
+<!-- Camera scan -->
+<rect x="960" y="416" width="280" height="64" rx="8" fill="#1a1030" stroke="#6644cc" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#8866ee" x="1100" y="439" text-anchor="middle">📷 CAMERA SYSTEM SCAN</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="1100" y="455" text-anchor="middle">All connected cameras checked</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="1100" y="468" text-anchor="middle">Is anyone visible in the scene?</text>
+
+<line x1="1100" y1="480" x2="1100" y2="520" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<!-- DECISION 2: Human in frame? -->
+<polygon points="1100,520 1220,570 1100,620 980,570" fill="#180d30" stroke="#6633cc" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#aa77ff" x="1100" y="566" text-anchor="middle">HUMAN</text>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#aa77ff" x="1100" y="580" text-anchor="middle">IN FRAME?</text>
+
+<!-- NO → voice check directly -->
+<line x1="980" y1="570" x2="880" y2="570" stroke="#2a3450" stroke-width="1.5" fill="none"/>
+<line x1="880" y1="570" x2="880" y2="1320" stroke="#2a3450" stroke-width="1.5" fill="none"/>
+<line x1="880" y1="1320" x2="960" y2="1320" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc4444" x="962" y="564">NO</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#3a4466" x="872" y="940" text-anchor="end">→ skip to</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#3a4466" x="872" y="952" text-anchor="end">voice check</text>
+
+<!-- YES ↓ -->
+<line x1="1100" y1="620" x2="1100" y2="660" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#22cc77" x="1108" y="644">YES</text>
+
+<!-- DECISION 3: Face visible? -->
+<polygon points="1100,660 1220,710 1100,760 980,710" fill="#180d30" stroke="#6633cc" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#aa77ff" x="1100" y="706" text-anchor="middle">FACE</text>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#aa77ff" x="1100" y="720" text-anchor="middle">VISIBLE?</text>
+
+<!-- YES → face model (right) -->
+<line x1="1220" y1="710" x2="1280" y2="710" stroke="#8855ee" stroke-width="1.5" fill="none"/>
+<line x1="1280" y1="710" x2="1280" y2="770" stroke="#8855ee" stroke-width="1.5" fill="none" marker-end="url(#arr-purple)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#22cc77" x="1228" y="704">YES</text>
+
+<rect x="1180" y="770" width="200" height="64" rx="8" fill="#1a1030" stroke="#8855ee" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#aa77ff" x="1280" y="793" text-anchor="middle">😶 FACE FAINTING</text>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#aa77ff" x="1280" y="807" text-anchor="middle">MODEL</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#887799" x="1280" y="821" text-anchor="middle">Facial + head position CV</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#887799" x="1280" y="832" text-anchor="middle">Higher accuracy w/ face</text>
+
+<line x1="1280" y1="834" x2="1280" y2="874" stroke="#8855ee" stroke-width="1.5" fill="none" marker-end="url(#arr-purple)"/>
+
+<!-- DECISION 4a: Face fainting? -->
+<polygon points="1280,874 1370,914 1280,954 1190,914" fill="#180d30" stroke="#8833cc" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc88ff" x="1280" y="910" text-anchor="middle">FAINTING</text>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc88ff" x="1280" y="924" text-anchor="middle">DETECTED?</text>
+
+<!-- YES → alert -->
+<line x1="1280" y1="954" x2="1280" y2="994" stroke="#cc3333" stroke-width="1.5" fill="none" marker-end="url(#arr-red)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#22cc77" x="1288" y="978">YES</text>
+<rect x="1180" y="994" width="200" height="64" rx="8" fill="#2a0d0d" stroke="#cc2222" stroke-width="2"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#ff5555" x="1280" y="1017" text-anchor="middle">🚨 ESCALATE</text>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#ff5555" x="1280" y="1031" text-anchor="middle">&amp; ALERT</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#aa5555" x="1280" y="1048" text-anchor="middle">Friends / family / doctor</text>
+
+<!-- NO → voice check -->
+<line x1="1190" y1="914" x2="1130" y2="914" stroke="#2a3450" stroke-width="1.5" fill="none"/>
+<line x1="1130" y1="914" x2="1130" y2="1320" stroke="#2a3450" stroke-width="1.5" fill="none"/>
+<line x1="1130" y1="1320" x2="1100" y2="1320" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc4444" x="1152" y="908">NO</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#3a4466" x="1138" y="1120">→ voice check</text>
+
+<!-- NO face → body model (left) -->
+<line x1="980" y1="710" x2="920" y2="710" stroke="#8855ee" stroke-width="1.5" fill="none"/>
+<line x1="920" y1="710" x2="920" y2="770" stroke="#8855ee" stroke-width="1.5" fill="none" marker-end="url(#arr-purple)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc4444" x="936" y="704">NO</text>
+
+<rect x="820" y="770" width="200" height="64" rx="8" fill="#1a1030" stroke="#8855ee" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#aa77ff" x="920" y="793" text-anchor="middle">🤸 BODY FAINTING</text>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#aa77ff" x="920" y="807" text-anchor="middle">MODEL</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#887799" x="920" y="821" text-anchor="middle">Pose + silhouette analysis</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#887799" x="920" y="832" text-anchor="middle">Detects collapse / abnormal posture</text>
+
+<line x1="920" y1="834" x2="920" y2="874" stroke="#8855ee" stroke-width="1.5" fill="none" marker-end="url(#arr-purple)"/>
+
+<!-- DECISION 4b: Body fainting? -->
+<polygon points="920,874 1010,914 920,954 830,914" fill="#180d30" stroke="#8833cc" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc88ff" x="920" y="910" text-anchor="middle">FAINTING</text>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc88ff" x="920" y="924" text-anchor="middle">DETECTED?</text>
+
+<!-- YES → alert -->
+<line x1="920" y1="954" x2="920" y2="994" stroke="#cc3333" stroke-width="1.5" fill="none" marker-end="url(#arr-red)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#22cc77" x="928" y="978">YES</text>
+<rect x="820" y="994" width="200" height="64" rx="8" fill="#2a0d0d" stroke="#cc2222" stroke-width="2"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#ff5555" x="920" y="1017" text-anchor="middle">🚨 ESCALATE</text>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#ff5555" x="920" y="1031" text-anchor="middle">&amp; ALERT</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#aa5555" x="920" y="1048" text-anchor="middle">Friends / family / doctor</text>
+
+<!-- NO → voice check -->
+<line x1="830" y1="914" x2="790" y2="914" stroke="#2a3450" stroke-width="1.5" fill="none"/>
+<line x1="790" y1="914" x2="790" y2="1320" stroke="#2a3450" stroke-width="1.5" fill="none"/>
+<line x1="790" y1="1320" x2="820" y2="1320" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc4444" x="806" y="908">NO</text>
+
+<!-- ══════════════════════════════════════════
+     VOICE CHECK-UP — center convergence
+     y = 1280..1560  x = 700
+══════════════════════════════════════════ -->
+
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" letter-spacing="2" fill="#3a4466" x="700" y="1312" text-anchor="middle">── ALL PATHS CONVERGE: VOICE CHECK-UP ──</text>
+
+<!-- Voice anomaly model side box -->
+<rect x="430" y="1330" width="200" height="64" rx="8" fill="#1a1030" stroke="#8855ee" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#aa77ff" x="530" y="1353" text-anchor="middle">🎙 VOICE ANOMALY</text>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#aa77ff" x="530" y="1367" text-anchor="middle">MODEL</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#887799" x="530" y="1381" text-anchor="middle">Scores reply · saved for doctor</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#887799" x="530" y="1389" text-anchor="middle">Runs simultaneously during check</text>
+
+<!-- Voice check-up main box -->
+<rect x="630" y="1330" width="440" height="120" rx="8" fill="#0d2a1a" stroke="#22aa66" stroke-width="2"/>
+<text font-family="'Courier New',monospace" font-size="13" font-weight="700" fill="#33cc88" x="850" y="1358" text-anchor="middle">🎙 VOICE CHECK-UP × 3</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="850" y="1376" text-anchor="middle">ELIZA: "Are you feeling ok?"</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="850" y="1392" text-anchor="middle">Patient must confirm verbally · up to 3 rounds</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#aa7788" x="850" y="1408" text-anchor="middle">✦ Voice transcribed → RAG-enhanced LLM evaluates</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#aa7788" x="850" y="1424" text-anchor="middle">✦ Raw voice also sent for local dialect compatibility</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#aa7788" x="850" y="1440" text-anchor="middle">✦ Voice anomaly model scores each reply in parallel</text>
+
+<!-- Dashed link: voice anomaly → check box -->
+<line x1="630" y1="1362" x2="630" y2="1362" stroke="#6633cc" stroke-width="0.8" stroke-dasharray="4 2" fill="none"/>
+<line x1="630" y1="1362" x2="630" y2="1362" stroke="#6633cc" stroke-width="0.8" stroke-dasharray="4 2" fill="none" marker-end="url(#arr-purple)"/>
+
+<line x1="850" y1="1450" x2="850" y2="1490" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<!-- LLM decision box -->
+<rect x="660" y="1490" width="380" height="64" rx="8" fill="#0d2a1a" stroke="#22aa66" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#33cc88" x="850" y="1513" text-anchor="middle">🧠 LLM DECISION</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="850" y="1529" text-anchor="middle">Evaluates response context, coherence</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="850" y="1545" text-anchor="middle">voice anomaly score + RAG intent match</text>
+
+<line x1="850" y1="1554" x2="850" y2="1594" stroke="#2a3450" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+
+<!-- DECISION 5: Patient ok? -->
+<polygon points="850,1594 1010,1654 850,1714 690,1654" fill="#0d2015" stroke="#228855" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#44ee88" x="850" y="1648" text-anchor="middle">PATIENT</text>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#44ee88" x="850" y="1665" text-anchor="middle">CONFIRMED OK?</text>
+
+<!-- YES → all clear -->
+<line x1="690" y1="1654" x2="580" y2="1654" stroke="#22aa55" stroke-width="1.5" fill="none"/>
+<line x1="580" y1="1654" x2="580" y2="1724" stroke="#22aa55" stroke-width="1.5" fill="none" marker-end="url(#arr-green)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#22cc77" x="618" y="1648">YES</text>
+
+<rect x="460" y="1724" width="240" height="64" rx="8" fill="#0d2a1a" stroke="#22aa44" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#44cc77" x="580" y="1747" text-anchor="middle">✅ ALL CLEAR</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="580" y="1763" text-anchor="middle">Log event · return to monitoring</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="580" y="1777" text-anchor="middle">Resume wearable stream</text>
+
+<!-- NO → escalate -->
+<line x1="1010" y1="1654" x2="1120" y2="1654" stroke="#cc3333" stroke-width="1.5" fill="none"/>
+<line x1="1120" y1="1654" x2="1120" y2="1724" stroke="#cc3333" stroke-width="1.5" fill="none" marker-end="url(#arr-red)"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc4444" x="1022" y="1648">NO</text>
+
+<rect x="1000" y="1724" width="240" height="80" rx="8" fill="#2a0d0d" stroke="#cc2222" stroke-width="2"/>
+<text font-family="'Courier New',monospace" font-size="11" font-weight="700" fill="#ff5555" x="1120" y="1748" text-anchor="middle">🚨 ESCALATE &amp; ALERT</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#aa5555" x="1120" y="1764" text-anchor="middle">Alert friends / family / doctor</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#aa5555" x="1120" y="1778" text-anchor="middle">Emergency services if configured</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#aa5555" x="1120" y="1792" text-anchor="middle">Location + vital snapshot sent</text>
+
+<!-- ══════════════════════════════════════════
+     LOG STORE
+══════════════════════════════════════════ -->
+
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" letter-spacing="2" fill="#3a4466" x="700" y="1868" text-anchor="middle">── ALL EVENTS LOGGED ──</text>
+
+<!-- dashed amber lines converging to log -->
+<!-- Voice action log → log store -->
+<line x1="200" y1="848" x2="200" y2="1854" stroke="#aa6622" stroke-width="1" stroke-dasharray="5 3" fill="none"/>
+<line x1="200" y1="1854" x2="380" y2="1854" stroke="#aa6622" stroke-width="1" fill="none" marker-end="url(#arr-amber)"/>
+
+<!-- Body alert → log -->
+<line x1="920" y1="1058" x2="920" y2="1854" stroke="#aa6622" stroke-width="1" stroke-dasharray="5 3" fill="none"/>
+<line x1="920" y1="1854" x2="900" y2="1854" stroke="#aa6622" stroke-width="1" fill="none" marker-end="url(#arr-amber)"/>
+
+<!-- Face alert → log -->
+<line x1="1280" y1="1058" x2="1280" y2="1840" stroke="#aa6622" stroke-width="1" stroke-dasharray="5 3" fill="none"/>
+<line x1="1280" y1="1840" x2="1060" y2="1840" stroke="#aa6622" stroke-width="1" fill="none"/>
+<line x1="1060" y1="1840" x2="1060" y2="1870" stroke="#aa6622" stroke-width="1" fill="none" marker-end="url(#arr-amber)"/>
+
+<!-- All clear → log -->
+<line x1="580" y1="1788" x2="580" y2="1870" stroke="#aa6622" stroke-width="1" stroke-dasharray="5 3" fill="none" marker-end="url(#arr-amber)"/>
+
+<!-- LLM escalate → log -->
+<line x1="1120" y1="1804" x2="1120" y2="1840" stroke="#aa6622" stroke-width="1" stroke-dasharray="5 3" fill="none"/>
+<line x1="1120" y1="1840" x2="1100" y2="1840" stroke="#aa6622" stroke-width="1" fill="none"/>
+<line x1="1100" y1="1840" x2="1100" y2="1870" stroke="#aa6622" stroke-width="1" fill="none" marker-end="url(#arr-amber)"/>
+
+<!-- Vitals side box (continuous) -->
+<rect x="30" y="1330" width="180" height="80" rx="8" fill="#281a06" stroke="#7a4a0a" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" fill="#cc8833" x="120" y="1353" text-anchor="middle">📡 VITALS STREAM</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#7a6044" x="120" y="1368" text-anchor="middle">HR + SpO₂ logged</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#7a6044" x="120" y="1382" text-anchor="middle">continuously in real-time</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#7a6044" x="120" y="1396" text-anchor="middle">all readings timestamped</text>
+<text font-family="'Courier New',monospace" font-size="8" fill="#7a6044" x="120" y="1408" text-anchor="middle">to centralized store</text>
+<line x1="120" y1="1410" x2="120" y2="1854" stroke="#aa6622" stroke-width="1" stroke-dasharray="5 3" fill="none"/>
+<line x1="120" y1="1854" x2="240" y2="1854" stroke="#aa6622" stroke-width="1" fill="none" marker-end="url(#arr-amber)"/>
+
+<!-- Log store box -->
+<rect x="240" y="1870" width="920" height="96" rx="10" fill="#281a06" stroke="#7a4a0a" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="14" font-weight="700" fill="#cc8833" x="700" y="1898" text-anchor="middle">📦 CENTRALIZED LOG STORE</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a6044" x="700" y="1916" text-anchor="middle">Vital signals · Anomaly events · Camera detections · Alert history · Check-up results</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a6044" x="700" y="1932" text-anchor="middle">Voice anomaly scores · LLM decision rationale · RAG queries · Tool actions</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a6044" x="700" y="1948" text-anchor="middle">Multilingual transcripts · Raw voice recordings · Escalation timeline · All events timestamped</text>
+
+<line x1="700" y1="1966" x2="700" y2="2006" stroke="#aa6622" stroke-width="1.5" fill="none" marker-end="url(#arr-amber)"/>
+
+<!-- ══════════════════════════════════════════
+     DOCTOR PLATFORM
+══════════════════════════════════════════ -->
+<text font-family="'Courier New',monospace" font-size="10" font-weight="700" letter-spacing="2" fill="#3a4466" x="700" y="2000" text-anchor="middle">── DOCTOR / CLINICIAN PLATFORM ──</text>
+
+<rect x="140" y="2006" width="1120" height="120" rx="10" fill="#281a06" stroke="#cc7722" stroke-width="2"/>
+<text font-family="'Courier New',monospace" font-size="14" font-weight="700" fill="#ee9933" x="700" y="2034" text-anchor="middle">🏥 DOCTOR &amp; CLINICIAN DASHBOARD</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a6044" x="700" y="2054" text-anchor="middle">Full analytics platform · Vital trend charts · Alert &amp; escalation history · Voice anomaly score timeline</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a6044" x="700" y="2070" text-anchor="middle">Critical condition flags · Multilingual transcript review · RAG query audit trail · AI decision log</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a6044" x="700" y="2086" text-anchor="middle">Exportable PDF reports · Real-time monitoring view · Patient history &amp; condition timeline</text>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a6044" x="700" y="2102" text-anchor="middle">Secure access · Role-based permissions · Mobile + desktop · Raw voice playback per session</text>
+
+<!-- ══════════════════════════════════════════
+     LEGEND at bottom
+══════════════════════════════════════════ -->
+<rect x="140" y="2156" width="1120" height="80" rx="8" fill="#0d0f18" stroke="#1a2030" stroke-width="1"/>
+<text font-family="'Courier New',monospace" font-size="9" font-weight="700" letter-spacing="1" fill="#3a4466" x="700" y="2174" text-anchor="middle">── LEGEND ──</text>
+
+<rect x="180" y="2184" width="12" height="12" rx="2" fill="#0d2a28" stroke="#1db89a" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="198" y="2195">ELIZA core / voice path</text>
+
+<rect x="380" y="2184" width="12" height="12" rx="2" fill="#0d1a2e" stroke="#1a4a80" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="398" y="2195">Wearable / sensor / ML</text>
+
+<rect x="580" y="2184" width="12" height="12" rx="2" fill="#1a1030" stroke="#6644cc" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="598" y="2195">AI detection models</text>
+
+<rect x="760" y="2184" width="12" height="12" rx="2" fill="#2a0d1a" stroke="#882244" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="778" y="2195">Multilingual / RAG pipeline</text>
+
+<rect x="980" y="2184" width="12" height="12" rx="2" fill="#2a0d0d" stroke="#cc2222" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="998" y="2195">Escalation / alerting</text>
+
+<rect x="1150" y="2184" width="12" height="12" rx="2" fill="#281a06" stroke="#7a4a0a" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="1168" y="2195">Logging / doctor platform</text>
+
+<!-- second legend row -->
+<rect x="180" y="2210" width="20" height="2" fill="none" stroke="#2a3450" stroke-width="1.5"/>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="206" y="2217">Main flow arrow</text>
+
+<rect x="380" y="2210" width="20" height="2" fill="none" stroke="#2a3450" stroke-dasharray="4 2" stroke-width="1"/>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="406" y="2217">Dashed = async / parallel / logging path</text>
+
+<polygon points="620,2213 640,2221 620,2229 600,2221" fill="#0d1530" stroke="#3355cc" stroke-width="1.2"/>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="648" y="2217">Diamond = decision point (YES/NO)</text>
+
+<rect x="900" y="2206" width="12" height="12" rx="2" fill="#1a0820" stroke="#882244" stroke-dasharray="4 2" stroke-width="1.2"/>
+<text font-family="'Courier New',monospace" font-size="9" fill="#7a88aa" x="918" y="2217">Dashed border = sub-pipeline / system</text>
+
+</svg>
+
+<p class="save-tip" style="font-family:monospace;text-align:center;color:#2a3050;font-size:11px;margin-top:24px;">
+  Save: Ctrl+S / Cmd+S &nbsp;·&nbsp; Export PDF: Ctrl+P → Save as PDF &nbsp;·&nbsp; Recommended paper: A2 landscape or A1
+</p>
+
+</body>
+</html>

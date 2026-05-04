@@ -1,0 +1,6 @@
+opencv-python
+mediapipe
+numpy
+h5py
+# Runtime inference does not import TensorFlow (native LSTM via h5py). Installing TF + old protobuf
+# often breaks MediaPipe; use training venv or root requirements protobuf>=6.31 if you need TF.

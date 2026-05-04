@@ -35,7 +35,7 @@ try:
         print(f"Current confidence score: {score:.3f}    ", end='\r')
         
         # If the score crosses the threshold, print the alert!
-        if score > 0.02:
+        if score > 0.3:
             print(f"\n*** WAKE WORD DETECTED! *** (Score: {score:.3f})")
 
 except KeyboardInterrupt:

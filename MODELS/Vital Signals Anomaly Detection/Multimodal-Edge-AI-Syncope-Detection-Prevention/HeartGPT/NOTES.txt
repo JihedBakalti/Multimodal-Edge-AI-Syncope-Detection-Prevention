@@ -1,0 +1,134 @@
+================================================================
+  NOTES — Switching from MIMIC file to real PPG sensor
+  Project: Syncope_HeartRate / HeartGPT
+  Date: 26/03/2026
+================================================================
+
+----------------------------------------------------------------
+1. DATA SOURCE
+----------------------------------------------------------------
+CURRENTLY:
+  ppg_raw = np.load("data/ppg_raw.npy")   <- offline MIMIC file
+
+CHANGE TO (real sensor via serial port):
+  import serial, struct
+  ser = serial.Serial('COMX', baudrate=115200)
+  # read samples in a loop and fill a buffer of 500 samples
+
+ACTION:
+  - Find your COM port in Windows Device Manager
+    (Ports section, e.g. COM3, COM5...)
+  - Replace 'COMX' with your actual port
+  - Install pyserial: pip install pyserial
+
+----------------------------------------------------------------
+2. SAMPLING RATE
+----------------------------------------------------------------
+CURRENTLY:
+  125 Hz  (MIMIC dataset standard)
+
+CHANGE IF your sensor runs at a different rate:
+  MAX30102  -> default 100 Hz  (can be set up to 3200 Hz)
+  AD8232    -> depends on your microcontroller setup
+
+WHERE TO UPDATE in inference.py:
+  time_sec = start / 125.0   <- change 125.0 to your sensor rate
+
+NOTE:
+  Window size stays at 500 samples regardless of sampling rate.
+  BUT the duration of each window changes:
+    500 samples at 125 Hz = 4 seconds
+    500 samples at 100 Hz = 5 seconds
+
+----------------------------------------------------------------
+3. WINDOW SIZE & SLIDING STEP
+----------------------------------------------------------------
+CURRENTLY:
+  WINDOW_SIZE = 500   (must stay 500 — model was trained on this)
+  STEP        = 250   (50% overlap, slide every 2 sec)
+
+DO NOT change WINDOW_SIZE — PPG-PT expects exactly 500 tokens.
+
+You CAN adjust STEP:
+  STEP = 125  -> slide every 1 sec  (more sensitive, slower)
+  STEP = 250  -> slide every 2 sec  (default, good balance)
+  STEP = 500  -> no overlap         (fastest, may miss short anomalies)
+
+----------------------------------------------------------------
+4. TOKENIZATION
+----------------------------------------------------------------
+CURRENTLY (and keep the same):
+  normalized = (window - window.min()) / (window.max() - window.min())
+  tokenized  = np.clip((normalized * 101).astype(int), 0, 101)
+
+NOTE:
+  This normalization is per-window (not global).
+  This is intentional — it handles different sensor voltage ranges
+  automatically. No change needed when switching sensors.
+
+WATCH OUT FOR:
+  Flat signal windows (sensor not touching skin, bad contact).
+  These produce min == max -> division by zero.
+  Already handled in preprocess() with the 1e-6 check.
+
+----------------------------------------------------------------
+5. ANOMALY THRESHOLD
+----------------------------------------------------------------
+CURRENTLY:
+  THRESHOLD = 5.0
+
+This was calibrated on MIMIC data:
+  Normal windows    -> MAE ~1.9 to 3.5
+  Anomaly windows   -> MAE ~9.5+
+
+WHEN YOU USE A REAL SENSOR:
+  First run inference.py on 30-60 sec of clean resting signal.
+  Check the MAE values printed — they should all be low (< 4).
+  If they are higher than expected, adjust threshold accordingly:
+
+  Too many false alarms  -> raise threshold (e.g. 6.0 or 7.0)
+  Missing real anomalies -> lower threshold (e.g. 3.5 or 4.0)
+
+----------------------------------------------------------------
+6. SENSOR-SPECIFIC NOTES
+----------------------------------------------------------------
+MAX30102 (most common fingertip sensor):
+  - Outputs raw IR and RED light values (not normalized)
+  - Connect via I2C to Arduino/Raspberry Pi
+  - Library: pip install max30102  or use Arduino IDE
+  - Default sample rate: 100 Hz -> change 125.0 to 100.0
+
+AD8232 (ECG module, also works for pulse):
+  - Outputs analog voltage -> needs ADC (Arduino analogRead)
+  - Sample rate set by your microcontroller loop speed
+  - Measure actual rate and update accordingly
+
+Generic Arduino serial setup:
+  - Arduino sends one sample per line over Serial.println()
+  - Read in Python: int(ser.readline().decode().strip())
+
+----------------------------------------------------------------
+7. FILES SUMMARY
+----------------------------------------------------------------
+read_ppg.py          -> only for MIMIC data, not needed with sensor
+test_pretrained.py   -> keep for offline testing anytime
+inference.py         -> THIS is what runs on real sensor data
+  (update serial port + sampling rate inside it)
+Model_files/
+  PPGPT_500k_iters.pth  -> pretrained model, never changes
+data/
+  ppg_raw.npy           -> MIMIC data, replaced by live stream
+
+----------------------------------------------------------------
+8. QUICK CHECKLIST BEFORE PLUGGING IN SENSOR
+----------------------------------------------------------------
+[ ] Install pyserial:         pip install pyserial
+[ ] Find COM port:            Device Manager -> Ports
+[ ] Know your sampling rate:  check sensor datasheet
+[ ] Update in inference.py:
+      - serial port string   ('COMX')
+      - sampling rate        (100.0 or 125.0)
+[ ] Run 30 sec clean signal first to verify MAE range
+[ ] Adjust THRESHOLD if needed
+
+================================================================

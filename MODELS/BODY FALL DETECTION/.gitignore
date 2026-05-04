@@ -1,0 +1,21 @@
+# Python virtual environments
+.venv/
+.venv*/
+venv/
+env/
+
+# bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# MediaPipe Tasks model blobs (large; re-download locally if needed)
+mp_models/
+
+# screenshots from the app (optional — remove line if you want to track these)
+fall_screenshot_*.jpg
+
+# OS / IDE
+.idea/
+.vscode/

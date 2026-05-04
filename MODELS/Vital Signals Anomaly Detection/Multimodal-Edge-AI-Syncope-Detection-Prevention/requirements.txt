@@ -1,0 +1,20 @@
+# ================================================================
+# Requirements — HeartGPT PPG Anomaly Detection
+# Python 3.10+ recommended
+# Install with: pip install -r requirements.txt
+# ================================================================
+
+# Core deep learning
+torch>=2.0.0
+
+# Signal reading (MIMIC / PhysioNet .dat .hea files)
+wfdb>=4.1.0
+
+# Numerical computing
+numpy>=1.24.0
+
+# Plotting
+matplotlib>=3.7.0
+
+# Serial communication (only needed when using a real PPG sensor)
+# pyserial>=3.5

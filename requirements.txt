@@ -28,9 +28,26 @@ pypdf>=3.17.0
 # Optional: FAISS for local embedding storage (if needed)
 faiss-cpu>=1.7.3
 
-# Required for Groq / Google AI SDKs
-protobuf>=4.25.3,<6.0.0
+# Protobuf: MediaPipe / TensorFlow use gencode >= ~6.31; the pip `protobuf` package runtime must match or exceed it.
+# google-generativeai 0.8.6 pins google-ai-generativelanguage==0.6.15, which forces protobuf<6 — that breaks MediaPipe.
+# After `pip install -r requirements.txt`, if Gemini or pip downgrades protobuf, run (PowerShell / cmd):
+#   python -m pip install "protobuf>=6.31.1,<8" "grpcio-status>=1.80.0" "google-ai-generativelanguage>=0.11.0"
+#   python -m pip install "google-generativeai==0.8.6" --no-deps
+protobuf>=6.31.1,<8
+grpcio-status>=1.80.0
+google-ai-generativelanguage>=0.11.0
 streamlit
 twilio>=8.0.0
 fastapi>=0.111.0
 uvicorn>=0.30.0
+django>=5.0.0
+djangorestframework>=3.15.0
+channels>=4.1.0
+daphne>=4.1.0
+reportlab>=4.2.0
+django-cors-headers>=4.4.0
+groq
+pyaudio
+SpeechRecognition
+elevenlabs
+pygame

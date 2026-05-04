@@ -1,0 +1,13 @@
+{
+  "bpm": 79.8,
+  "spo2": 93.8,
+  "timestamp": 1777263843.139,
+  "mae_score": 10.477,
+  "anomaly_detected": false,
+  "threshold": 11.0,
+  "score": 0.6,
+  "spo2_state": "NORMAL",
+  "bpm_state": "EARLY WARNING",
+  "spo2_score": 0.0,
+  "bpm_score": 0.6
+}

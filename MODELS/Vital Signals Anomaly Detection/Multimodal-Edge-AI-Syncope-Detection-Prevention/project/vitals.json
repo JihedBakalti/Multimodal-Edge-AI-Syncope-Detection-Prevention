@@ -1,0 +1,11 @@
+{
+  "users": [
+    null,
+    {
+      "vitals": {
+        "BloodOxygen": 94,
+        "HeartRate": 89
+      }
+    }
+  ]
+}

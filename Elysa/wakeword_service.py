@@ -39,7 +39,7 @@ _SUPPRESS_TRIGGERS_UNTIL = 0.0
 _resume_timer: Optional[threading.Timer] = None
 _resume_timer_lock = threading.Lock()
 
-_THRESHOLD = float(os.getenv("ELYSA_THRESHOLD", "0.02"))
+_THRESHOLD = float(os.getenv("ELYSA_THRESHOLD", "0.3"))
 _COOLDOWN_S = float(os.getenv("ELYSA_COOLDOWN", "5.0"))
 _RESUME_DELAY_SEC = float(os.getenv("ELYSA_RESUME_DELAY_SEC", "2.5"))
 _POST_VOICE_COOLDOWN_SEC = float(os.getenv("ELYSA_POST_VOICE_COOLDOWN_SEC", "6.0"))
