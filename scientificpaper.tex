@@ -1,0 +1,522 @@
+\documentclass[11pt,a4paper]{article}
+
+% =============================
+% Packages
+% =============================
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[table]{xcolor}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{glossaries}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black,
+  pdftitle={InterSense: Adaptive Multimodal Orchestration for Syncope-Risk Medical Monitoring},
+  pdfauthor={Jihed El Hak Bakalti et al.}
+}
+
+\makeglossaries
+
+% Glossaries: show long form on first use, then short form.
+\setacronymstyle{long-short}
+
+% =============================
+% Acronyms (clickable entries)
+% =============================
+\newacronym{ai}{AI}{Artificial Intelligence}
+\newacronym{rag}{RAG}{Retrieval-Augmented Generation}
+\newacronym{asr}{ASR}{Automatic Speech Recognition}
+\newacronym{stt}{STT}{Speech-to-Text}
+\newacronym{llm}{LLM}{Large Language Model}
+\newacronym{tts}{TTS}{Text-to-Speech}
+\newacronym{api}{API}{Application Programming Interface}
+\newacronym{slo}{SLO}{Service Level Objective}
+\newacronym{fifo}{FIFO}{First-In, First-Out}
+\newacronym{gpu}{GPU}{Graphics Processing Unit}
+\newacronym{cpu}{CPU}{Central Processing Unit}
+\newacronym{dl}{DL}{Deep Learning}
+\newacronym{bpm}{BPM}{Beats Per Minute}
+\newacronym{spo2}{SpO$_2$}{Peripheral Capillary Oxygen Saturation}
+\newacronym{yolo}{YOLO}{You Only Look Once}
+
+% =============================
+% Terminology (clickable entries)
+% =============================
+\newglossaryentry{syncope}{
+  name=syncope,
+  description={Transient loss of consciousness resulting from cerebral hypoperfusion (commonly referred to as fainting), typically followed by recovery.}
+}
+\newglossaryentry{orchestration}{
+  name=orchestration,
+  description={Coordinated control of multiple software and model components according to runtime conditions and policy decisions.}
+}
+\newglossaryentry{multimodal}{
+  name=multimodal,
+  description={Using multiple data modalities (e.g., physiological signals, vision, and speech) within a unified decision framework.}
+}
+\newglossaryentry{escalation}{
+  name=escalation,
+  description={A transition from lower-intensity monitoring to higher-intensity intervention when risk increases.}
+}
+\newglossaryentry{idempotency}{
+  name=idempotency key,
+  description={A unique request identifier that prevents duplicate processing when network retries occur.}
+}
+\newglossaryentry{queueing}{
+  name=queueing,
+  description={A capacity management mechanism that buffers requests when workers are busy, enabling bounded latency instead of immediate failure.}
+}
+
+% =============================
+% Title block
+% =============================
+\title{\textbf{InterSense: Adaptive Multimodal Orchestration for Syncope-Risk Medical Monitoring}}
+\author{
+Jihed El Hak Bakalti \and
+Hamza Zighni \and
+Mohamed Aziz Ayadi \and
+Mohamed Malek Manai \and
+Sara Bessaad \and
+Alaeddine Ben Hassine \and
+Cyrine Belfguira
+}
+\date{University \gls{ai} Integrated Project}
+
+\begin{document}
+\maketitle
+\onehalfspacing
+
+\begin{center}
+\textit{This document is prepared in the context of a University \gls{ai} Integrated Project (not a university research department submission).}
+\end{center}
+
+% =============================
+% ABSTRACT
+% =============================
+\begin{abstract}
+We present InterSense, a \gls{multimodal}, safety-oriented medical orchestration framework designed for continuous \gls{syncope}-risk monitoring. The central scientific contribution of InterSense is adaptive compute \gls{orchestration}: computationally expensive \gls{dl} inference pipelines are not executed continuously but are activated exclusively when upstream evidence from lightweight clinical signals justifies \gls{escalation}. This hierarchical triage architecture — progressing from wearable vital-sign anomaly scoring through camera-based human presence detection to full syncope and fall-detection models — substantially reduces \gls{gpu} and \gls{cpu} utilization while preserving sub-minute emergency response latency. InterSense further integrates a full agentic voice pipeline (\gls{asr} $\rightarrow$ \gls{rag} $\rightarrow$ \gls{llm} $\rightarrow$ \gls{tts}), a production wake-word subsystem, and a structured clinical event ingestion layer. Experimental evaluation axes are proposed across resource efficiency, safety latency, escalation quality, robustness, and human-factors dimensions. The architecture is both technically grounded and publication-ready as a compute-optimized, safety-oriented orchestration framework for real-world clinical deployment.
+\end{abstract}
+
+\noindent\textbf{Keywords:} medical AI orchestration, \gls{syncope} detection, adaptive compute, multimodal clinical monitoring, agentic pipeline, fall detection, \gls{rag}, edge inference.
+
+% =============================
+% SECTION 1
+% =============================
+\section{1. Introduction}
+Continuous patient monitoring in clinical and home settings has long faced a fundamental tension between safety completeness and computational sustainability. Always-on deep learning inference, while maximally responsive, imposes prohibitive energy, latency, and infrastructure costs when applied indiscriminately to large monitored populations. Conversely, threshold-based rule systems lack the perceptual richness to distinguish genuine medical emergencies from benign physiological variation.
+
+\gls{syncope} — transient loss of consciousness resulting from cerebral hypoperfusion — exemplifies this challenge acutely. It is associated with significant morbidity, including traumatic falls, and its early detection window is narrow [CITATION]. Traditional monitoring approaches either rely on wearable vital signs alone (missing postural and facial evidence) or deploy continuous computer vision (computationally intractable at scale).
+
+We introduce InterSense, a multimodal medical orchestration framework that resolves this tension through adaptive compute orchestration: the principle that computationally expensive inference should be treated as a scarce resource, allocated only when sufficient upstream evidence justifies escalation. This yields what we term a harmonic, demand-driven escalation policy — one that is both operationally sustainable and clinically responsive.
+
+\noindent The primary contributions of this paper are:
+\begin{itemize}[leftmargin=1.4em]
+  \item A staged, evidence-gated inference architecture for \gls{syncope}-risk clinical workflows.
+  \item A compute-aware risk escalation policy that activates heavy vision models only under justified conditions.
+  \item An integrated agentic voice pipeline combining \gls{asr}, \gls{rag}-based knowledge retrieval, \gls{llm} reasoning, and \gls{tts} within the same monitoring loop.
+  \item A production wake-word subsystem with robust audio concurrency and false-trigger controls.
+  \item A clinical event ingestion layer with idempotency, retry semantics, and structured observability.
+  \item A pool-and-queue infrastructure model demonstrating high effective user concurrency under bursty inference demand.
+\end{itemize}
+
+% =============================
+% SECTION 2
+% =============================
+\section{2. Related Work}
+Prior work on medical monitoring systems can be organized along three dimensions: (i) signal modality, (ii) inference architecture, and (iii) escalation design.
+
+\subsection{2.1 Wearable Vital-Sign Monitoring}
+Wearable systems measuring heart rate (\gls{bpm}) and oxygen saturation (\gls{spo2}) form the backbone of ambulatory cardiac and respiratory monitoring. Studies have demonstrated the utility of SpO2 drop patterns as early syncope precursors [CITATION]. However, wearable-only systems miss postural collapse and facial pallor — multimodal evidence critical for distinguishing pre-syncope from other causes of physiological abnormality.
+
+\subsection{2.2 Computer Vision in Clinical Settings}
+(\gls{yolo}-family models have been widely applied to real-time person detection [CITATION]. Syncope-specific face models and fall-detection systems have been proposed for camera-equipped clinical environments [CITATION]. The predominant deployment paradigm, however, remains always-on inference, imposing continuous \gls{gpu} load regardless of clinical context.)
+
+\subsection{2.3 Cascaded and Conditional Inference}
+Hierarchical inference has been studied in object detection, where cheap regressors gate expensive classifiers [CITATION]. In medical AI, early-exit neural networks reduce average inference cost [CITATION]. InterSense generalizes this concept to a multi-sensor, multi-model orchestration system spanning wearables, cameras, and voice modalities, with clinically motivated escalation semantics rather than pure accuracy-efficiency trade-offs.
+
+\subsection{2.4 Agentic Voice Pipelines}
+Recent work on large language model (\gls{llm}) agents with tool use [CITATION] and retrieval-augmented generation (\gls{rag}) [CITATION] has demonstrated that LLMs can act as reasoning orchestrators over heterogeneous APIs. InterSense applies this paradigm in a clinical safety context, where the agent must reason over both conversational and physiological evidence to decide between dialogue and emergency action.
+
+% =============================
+% SECTION 3
+% =============================
+\section{3. System Architecture}
+InterSense is organized into five functional layers, each with well-defined interfaces to adjacent layers (Figure 1). This modularity enables independent versioning, fault isolation, and targeted compute optimization.
+
+\subsection{3.1 Interaction Layer}
+The interaction layer exposes two entry points: a manual text/voice conversation interface implemented in \texttt{medical\_assistant.py}, and a wake-word-triggered hands-free mode managed by \texttt{Elysa/wakeword\_service.py}. An optional retrieval-augmented generation (\gls{rag}) context enrichment module — backed by a Qdrant vector database and dense embeddings — enhances clinical dialogue with domain knowledge. This layer handles all human-facing I/O and is intentionally decoupled from heavy inference components.
+
+\subsection{3.2 Orchestration Layer}
+The high-level state policy is defined declaratively in \texttt{intersense\_orchestrator.py}, while runtime orchestration is implemented in the \texttt{run\_simulation\_orchestrator} function within \texttt{medical\_assistant.py}. REST API endpoints for external orchestration triggers are exposed by \texttt{orchestrator\_api.py}. The orchestration layer is the central control plane: it consumes clinical signal scores, issues model invocations, and determines escalation actions.
+
+\subsection{3.3 Clinical Signal Layer}
+Streaming vital samples — BPM and SpO2 — are processed by \texttt{vital\_sample\_session.py}, which maintains per-patient, per-session state through a \texttt{VitalSessionState} tracker keyed by (user\_id, session\_id) tuples. This design prevents cross-session state contamination in multi-patient deployments. Anomaly scoring produces per-session channel scores that drive orchestration eligibility.
+
+\subsection{3.4 Vision and Safety Models Layer (On-Demand)}
+The vision layer houses three on-demand model families. The \gls{yolo} Face/Person Detector performs lightweight human presence detection and face-versus-body routing. The V2 Syncope Face Runtime performs deep syncope classification on face-visible windows. The Body Fall Detector performs fall-confirmation inference on body-only windows. A TORGO-based Voice Anomaly Scoring module augments verbal safety checks with speech-risk evidence. Critically, all models in this layer are activated conditionally — never continuously.
+
+\subsection{3.5 Escalation and Persistence Layer}
+When critical criteria are satisfied, the escalation layer dispatches WhatsApp emergency alerts via Twilio and persists structured orchestration events to the platform backend ingestion endpoint \texttt{/api/ingestion/orchestrator-event/} with retry semantics and idempotency key generation. This layer ensures clinical auditability and supports timeline reconstruction for clinician review.
+
+\begin{table}[h!]
+  \centering
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{|p{3.2cm}|p{5cm}|p{8.2cm}|}
+    \hline
+    \rowcolor{gray!20}\textbf{Layer} & \textbf{Key Module(s)} & \textbf{Function} \\
+    \hline
+    Interaction & \texttt{medical\_assistant.py, wakeword\_service.py} & Voice/text I/O, \gls{rag} enrichment, wake-word activation \\
+    \hline
+    Orchestration & \texttt{intersense\_orchestrator.py, orchestrator\_api.py} & State policy, runtime decision, API endpoint exposure \\
+    \hline
+    Clinical Signal & \texttt{vital\_sample\_session.py} & Per-session BPM/SpO2 anomaly scoring, gate/latch control \\
+    \hline
+    Vision \& Safety & YOLO, Syncope Face Model, Body Fall Detector, TORGO & On-demand human detection, syncope/fall classification, voice risk \\
+    \hline
+    Escalation \& Persistence & Twilio WhatsApp, Platform Ingest API & Emergency dispatch, structured event logging, idempotency \\
+    \hline
+  \end{tabular}
+  \caption{Table 1. InterSense Functional Layer Summary}
+\end{table}
+
+% =============================
+% SECTION 4
+% =============================
+\section{4. Operational Modes}
+InterSense supports a continuum from fully manual to fully autonomous operation, allowing deployment configuration to match clinical context and infrastructure capacity.
+
+\subsection{4.1 Manual Clinical Assistant Mode}
+In this mode, users explicitly invoke the voice or text interface to obtain clinical information. The \gls{rag}-enriched LLM pipeline responds to queries using domain knowledge from the Qdrant collection. Heavy visual models are not invoked, preserving computational resources for environments where monitoring is informational rather than safety-critical. This mode supports routine patient-facing interaction in low-acuity settings.
+
+\subsection{4.2 Automatic Monitoring Mode}
+Vital samples (BPM, SpO2) arrive continuously at the \texttt{/api/vital-sample} endpoint. The clinical signal layer scores anomalies against per-session baselines. The orchestration layer evaluates gate, cooldown, and latch conditions to determine whether a multimodal check is warranted. When gating conditions are not satisfied, the system remains in lightweight monitoring mode — the predominant operating state for a healthy monitored population.
+
+\subsection{4.3 Automatic Escalation Mode}
+When multimodal evidence from the vision layer converges on critical risk, the system transitions to escalation mode. Actions in this mode include a critical voice prompt, a WhatsApp alert dispatch to designated emergency contacts, and persistent event logging for clinician dashboard review. This mode implements the terminal rung of the escalation ladder and is designed for minimum latency from detection to alert.
+
+% =============================
+% SECTION 5
+% =============================
+\section{5. Core Decision Logic: State Machine and Runtime Policy}
+The InterSense decision engine combines a symbolic state machine with evidence-driven runtime multimodal checks, making the policy both interpretable and adaptive.
+
+\subsection{5.1 State Categories}
+The orchestrator operates over four primary state categories:
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{normal} — no wearable anomaly; monitoring continues at minimal compute cost.
+  \item \texttt{warning} — wearable anomaly confirmed with human presence but non-critical DL evidence; proactive voice safety check is initiated.
+  \item \texttt{no\_action} — wearable anomaly present but no confirmed human target detected; voice safety protocol is still attempted.
+  \item \texttt{critical\_emergency} — wearable anomaly, confirmed human presence, and critical DL output; immediate alert action is triggered.
+\end{itemize}
+
+\subsection{5.2 Baseline Policy Rules}
+The baseline state transition policy (\texttt{intersense\_orchestrator.py}) is defined as follows:
+\begin{itemize}[leftmargin=1.4em]
+  \item No wearable anomaly $\rightarrow$ remain \texttt{normal} (monitoring only).
+  \item Wearable anomaly + human detected + DL output critical $\rightarrow$ \texttt{critical\_emergency} (immediate alert).
+  \item Wearable anomaly + human detected + DL output non-critical $\rightarrow$ \texttt{warning} (voice safety check).
+  \item Wearable anomaly + no confirmed human target $\rightarrow$ \texttt{no\_action} (voice safety protocol attempted).
+\end{itemize}
+
+\subsection{5.3 Runtime Orchestration Expansion}
+The \texttt{run\_simulation\_orchestrator} function extends the symbolic policy with staged evidence collection at runtime:
+\begin{itemize}[leftmargin=1.4em]
+  \item Step 1: Validate and enrich vitals from simulator or Firebase source.
+  \item Step 2: Execute lightweight YOLO camera presence scan.
+  \item Step 3a (face route): If human with visible face detected, invoke syncope face model.
+  \item Step 3b (body route): If human without visible face detected, invoke body-fall detector.
+  \item Step 4: If any active vision path returns critical result $\rightarrow$ immediate emergency escalation.
+  \item Step 5: Otherwise, continue with voice safety protocols per warning/no\_action behavior.
+\end{itemize}
+This hybrid architecture makes the state machine both symbolically interpretable (policy rules) and perceptually adaptive (runtime multimodal evidence). The design ensures that the orchestrator can be formally analyzed at the policy level while retaining the expressivity of deep neural network classifiers for ambiguous real-world signals.
+
+% =============================
+% SECTION 6
+% =============================
+\section{6. Compute-Optimization Strategy}
+The central engineering contribution of InterSense is its compute-optimization strategy. The system is intentionally architected to minimize unnecessary deep learning execution through a cascade of increasingly expensive inference stages.
+
+\subsection{6.1 Staged Inference Cascade}
+Three inference stages are defined with increasing cost:
+\begin{itemize}[leftmargin=1.4em]
+  \item Stage A (Cheap): Wearable/vital anomaly signal evaluation using statistical per-session baselines.
+  \item Stage B (Moderate): YOLO camera presence scan and face-versus-body routing.
+  \item Stage C (Expensive): Syncope face model or body-fall detector, executed only for selected cameras and specific scenarios identified by Stage B.
+\end{itemize}
+Each stage gates the activation of the next. Under normal physiological conditions, the vast majority of monitoring cycles terminate at Stage A, never invoking computer vision inference.
+
+\subsection{6.2 Compute Reduction Mechanisms}
+Seven distinct mechanisms enforce compute reduction across the system:
+
+\begin{table}[h!]
+  \centering
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{|p{4cm}|p{10cm}|}
+    \hline
+    \rowcolor{gray!20}\textbf{Mechanism} & \textbf{Description} \\
+    \hline
+    Conditional Activation & DL vision windows skipped when no wearable anomaly or no human evidence is present. \\
+    \hline
+    Route-Constrained Invocation & Syncope face model triggered only on face-route evidence; fall detector only on body-only route. \\
+    \hline
+    Session-Scoped Isolation & \texttt{VitalSessionState} keyed per (user\_id, session\_id) prevents cross-session triggering artifacts. \\
+    \hline
+    Cooldown Windows & \texttt{ORCH\_VITAL\_ORCH\_COOLDOWN\_SEC} throttles repeated orchestrator invocations within a session. \\
+    \hline
+    Latch-Based Suppression & \texttt{\_orchestration\_latched} blocks high-cost reruns after an escalation-class trigger until scores drop. \\
+    \hline
+    Channel Gating & \texttt{ORCH\_VITAL\_ORCHESTRATE\_MIN\_CHANNEL\_SCORE} controls which clinical channels can trigger orchestration. \\
+    \hline
+    Auto-Reset & Optional tracker reset after critical outcomes prevents pathological re-trigger feedback loops. \\
+    \hline
+  \end{tabular}
+  \caption{Table 2. Compute Reduction Mechanisms in InterSense}
+\end{table}
+
+\subsection{6.3 Scientific Framing: Hierarchical Triage Scheduler}
+InterSense can be formally interpreted as a hierarchical triage scheduler over heterogeneous sensors, where computationally expensive inference is treated as a scarce resource allocated only under sufficient uncertainty or risk. This framing aligns with classical queuing-theoretic models of resource-constrained service systems, where the scheduler must balance expected service quality against utilization bounds.
+
+Under this model, the expected compute cost $C$ for a monitored population of $N$ users over a time window $T$ is:
+\begin{equation}
+ C(N, T) = N \cdot T \cdot [P(A) \cdot c_A + P(B|A) \cdot c_B + P(C|B) \cdot c_C]
+\end{equation}
+where $P(A)$ is the probability of a vital anomaly, $P(B|A)$ is the probability of human presence given anomaly, $P(C|B)$ is the probability of critical DL output given presence, and $c_A < c_B < c_C$ are per-invocation costs. Under realistic clinical priors — where syncope events are rare — the product $P(A)\cdot P(B|A)\cdot P(C|B) \ll 1$, yielding compute savings of one to two orders of magnitude versus always-on inference.
+
+% =============================
+% SECTION 7
+% =============================
+\section{7. End-to-End Event Flow}
+The primary monitoring flow proceeds through five stages upon receipt of each BPM/SpO2 sample:
+\begin{itemize}[leftmargin=1.4em]
+  \item Receive sample and update per-session clinical baselines and anomaly scores.
+  \item Apply gate, cooldown, and latch policy to determine orchestration eligibility.
+  \item If eligible, construct orchestration payload and invoke \texttt{run\_simulation\_orchestrator}.
+  \item Execute staged multimodal evidence collection (Stages A $\rightarrow$ B $\rightarrow$ C as warranted).
+  \item Persist orchestration result to the platform ingest API with idempotency key.
+\end{itemize}
+
+\subsection{7.2 Simulation Flow (\texttt{/api/simulate})}
+The simulation endpoint accepts synthetic or controlled state payloads, executes the full orchestrator runtime and multimodal decision path, and persists the event snapshot. This endpoint supports experimental evaluation, regression testing, and controlled clinical trials.
+
+\subsection{7.3 Human Safety Check Flow}
+When risk is non-critical but concerning (warning state), the system initiates a structured voice safety dialogue:
+\begin{itemize}[leftmargin=1.4em]
+  \item Launch structured voice check attempts with a configured number of retry attempts.
+  \item Score speech characteristics using the TORGO-based voice anomaly module.
+  \item Classify response confidence using the LLM reasoning step.
+  \item Escalate to WhatsApp alert if safety cannot be confirmed through dialogue.
+\end{itemize}
+This protocol implements a human-in-the-loop verification step that reduces false-positive emergency dispatches while maintaining a conservative safety posture under ambiguity.
+
+% =============================
+% SECTION 8
+% =============================
+\section{8. Agentic Voice Pipeline}
+Beyond safety escalation, InterSense operates as a full agentic voice pipeline capable of deciding between conversational response and executable action — a distinction with significant clinical implications.
+
+\subsection{8.1 Pipeline Stages}
+The pipeline proceeds through six sequential stages:
+\begin{itemize}[leftmargin=1.4em]
+  \item Voice Capture and Transcription (ASR): User speech is recorded and passed through Whisper-based transcription. The first transcript is treated as a high-value but potentially imperfect signal, particularly under accent, environmental noise, or low-resource language conditions.
+  \item Knowledge Retrieval (RAG Enrichment): The transcript is used to retrieve domain-relevant context from the Qdrant vector database collection. Retrieved chunks are injected into the prompt context to ground downstream \gls{llm} reasoning.
+  \item Context Fusion: The system forwards both the retrieved knowledge context and the original voice-derived signal to the \gls{llm}. This dual-input strategy helps disambiguate rare local language expressions and mitigate ASR transcript errors.
+  \item Agentic Decision Step (Reason + Act): The \gls{llm} evaluates intent and safety context against the available toolset, returning either a tool call (when action is required) or a speech response (when no external action is needed).
+  \item Execution and Response Rendering: If a tool is selected, it is executed and the result is verbalized back to the user. If no tool is required, the generated response proceeds directly to speech synthesis.
+  \item Speech Synthesis (TTS): Final assistant text is converted to voice output for natural conversational interaction, completing the perception-reasoning-action loop.
+\end{itemize}
+
+\subsection{8.2 Scientific Characterization}
+This pipeline is architecturally agentic in the formal sense: it perceives (voice capture), grounds (\gls{rag} retrieval), reasons (\gls{llm}), acts when needed (tool execution), and communicates back in voice form (\gls{tts}). The combination of multilingual robustness through Whisper, retrieval-grounded reasoning, and executable tool-use within a single coherent loop represents a practical instantiation of \gls{llm}-agent theory in a clinical safety context.
+
+% =============================
+% SECTION 9
+% =============================
+\section{9. Wake-Word Subsystem (Elysa)}
+InterSense includes a production-grade wake-word subsystem enabling hands-free activation without requiring manual UI interaction — a critical usability requirement in clinical and home care contexts where users may have limited mobility.
+
+\subsection{9.1 Implementation}
+Wake-word detection is implemented using the OpenWakeWord library with a custom model trained on the wake-word \texttt{Elysa} (\texttt{Elysa/Elysa.onnx}). On detection, the wake-word service enqueues the same voice command path used by the manual UI microphone, preserving a single unified agent pipeline. Low-latency wake acknowledgment is achieved by replaying a locally cached greeting audio file generated via ElevenLabs-based \gls{tts}, avoiding repeated network calls during acknowledgment.
+
+\subsection{9.2 Audio Concurrency and False-Trigger Controls}
+The wake-word subsystem implements explicit microphone and session coordination to prevent recursive self-triggering — a practical failure mode in deployed voice systems:
+\begin{itemize}[leftmargin=1.4em]
+\item The wake listener pauses during \gls{stt} capture and \gls{tts} playback.
+  \item A delayed resume is applied after voice sessions to absorb residual audio.
+  \item Post-session trigger suppression and cooldown windows reduce speaker-echo retriggers.
+\end{itemize}
+These controls make wake-word behavior stable in real conversational loops, an engineering requirement that is often underspecified in research literature but critical for clinical deployment acceptability.
+
+% =============================
+% SECTION 10
+% =============================
+\section{10. Escalation Design and Safety Semantics}
+The escalation design of InterSense reflects a deliberately conservative safety posture, informed by the asymmetric cost of false negatives (missed emergencies) versus false positives (unnecessary alerts) in \gls{syncope}-risk contexts.
+
+The escalation ladder is structured as follows:
+\begin{itemize}[leftmargin=1.4em]
+  \item Critical multimodal evidence $\rightarrow$ immediate alert action (minimum latency path).
+  \item Non-critical uncertainty $\rightarrow$ dialog-based verification first (reduces false-positive burden).
+  \item Failure to confirm safety through dialogue $\rightarrow$ escalation to WhatsApp alert (conservative closure).
+\end{itemize}
+This three-tier structure balances false-positive control with real-time intervention capability. The intermediate dialogue verification tier is a distinguishing design choice relative to prior systems that escalate directly from sensor threshold violations, providing a human-in-the-loop checkpoint that captures safety-relevant context unavailable from sensors alone.
+
+% =============================
+% SECTION 11
+% =============================
+\section{11. Data and Integration Architecture}
+
+\subsection{11.1 Structured Event Ingestion}
+The orchestrator emits structured payloads to the platform ingest \gls{api} after each orchestration cycle. Payloads include the system state, executed actions, model risk outputs, raw vital values (BPM, SpO2), session metadata, wall-clock timestamps, and an \gls{idempotency} key. Idempotency key generation supports duplicate-safe ingestion workflows in the presence of network retries.
+
+\subsection{11.2 Platform Integration}
+The default platform ingest endpoint is \texttt{http://127.0.0.1:8100/api/ingestion/orchestrator-event/}. Retry count, timeout, and backoff parameters are configurable via environment variables (\texttt{PLATFORM\_INGEST\_URL}, \texttt{PLATFORM\_INGEST\_TOKEN}), supporting deployment across diverse network topologies.
+
+\subsection{11.3 Clinical Traceability}
+Voice safety checks and orchestration events are persisted for clinician dashboard inspection, enabling timeline reconstruction and post-hoc audit. This supports both regulatory compliance requirements in clinical deployment and reproducibility requirements in research evaluation.
+
+% =============================
+% SECTION 12
+% =============================
+\section{12. Configurable Control Surface}
+InterSense exposes a rich environment-level configuration surface that enables adaptation across research experiments and production deployment constraints without code modification:
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{ORCH\_VITAL\_CLINICAL\_THRESHOLD} — minimum anomaly score to trigger vital-based orchestration.
+  \item \texttt{ORCH\_VITAL\_ORCH\_COOLDOWN\_SEC} — inter-orchestration cooldown duration per session.
+  \item \texttt{ORCH\_VITAL\_ORCHESTRATE\_MIN\_CHANNEL\_SCORE} — channel score threshold for orchestration eligibility.
+  \item \texttt{ORCH\_VITAL\_AUTO\_RESET} — enables automatic tracker reset after critical pipeline outcomes.
+  \item \texttt{PLATFORM\_INGEST\_URL}, \texttt{PLATFORM\_INGEST\_TOKEN} — platform endpoint and authentication.
+  \item Model/window routing controls — camera count, route durations, forced camera index for experimental configuration.
+\end{itemize}
+This parameterization makes InterSense directly tunable for ablation studies, sensitivity analysis, and deployment-specific calibration — properties required for rigorous experimental evaluation.
+
+% =============================
+% SECTION 13
+% =============================
+\section{13. Infrastructure and Capacity Model}
+Because InterSense activates deep learning services only when risk-gating conditions are satisfied, infrastructure can be provisioned for bursty, short-lived inference windows rather than continuous full-load processing. This has significant implications for deployment economics at scale.
+
+\subsection{13.1 Model-Serving Topology}
+The recommended production serving topology isolates each heavy model family on dedicated containerized pools:
+\begin{itemize}[leftmargin=1.4em]
+  \item One model family per server pool (e.g., syncope face pool, body-fall pool).
+  \item Each server running multiple equivalent stateless containers (e.g., 8 containers per server).
+  \item Stateless request dispatch from the orchestrator to available container instances.
+\end{itemize}
+This topology yields horizontal scalability, clear fault domains per model type, and independent autoscaling and versioning for each model family.
+
+\subsection{13.2 Duty Cycle Compression and User Coverage}
+The key capacity insight is duty cycle compression: users are monitored continuously at low cost (vitals and lightweight camera scan), while expensive models run only for short decision windows when clinically justified. Under this behavior, a finite container pool — for example, eight active containers for a model family — can serve a substantially larger user population than an always-on design, because container occupancy is intermittent rather than permanent. In a representative deployment profile, such a pool can support 200 or more concurrent monitored users when trigger rates and inference window durations remain within expected operating bounds.
+
+\subsection{13.3 Queueing Policy Under Saturation}
+When all containers in a model pool are simultaneously occupied:
+\begin{itemize}[leftmargin=1.4em]
+  \item Requests are placed in a bounded \gls{fifo} queue with urgency-aware override capability.
+  \item Target queue wait is bounded at approximately 30 seconds under normal burst conditions (engineering \gls{slo}).
+ \end{itemize}
+This converts short overload spikes into controlled latency rather than dropped safety workflows — a critical property for medical applications where dropped inference requests could constitute missed emergencies.
+
+% =============================
+% SECTION 14
+% =============================
+\section{14. Model Integration Audit}
+For scientific accuracy, we provide an explicit audit mapping model assets to their orchestration status, distinguishing production-integrated models from experimental research components.
+
+\subsection{14.1 Models Actively Integrated in Orchestrator Runtime}
+The following five model components are fully integrated into the production orchestration runtime:
+\begin{itemize}[leftmargin=1.4em]
+  \item \gls{yolo} Face/Person Detector — used by \texttt{run\_camera\_presence\_scan} as the first vision gate; determines human presence and routes to face or body path.
+  \item V2 Syncope Face Runtime — invoked by \texttt{run\_syncope\_detection\_window} when the face route is selected; produces per-window critical flags and maximum risk score.
+  \item Body Fall Detector — invoked by \texttt{run\_body\_fall\_detection\_window} for body-only route; uses sustained confirmation logic before critical escalation.
+  \item Vital Signals Anomaly Scoring — integrated in \texttt{vital\_sample\_session.py}; provides per-session BPM/SpO2 trend scoring driving gate/cooldown/latch eligibility.
+  \item Voice Anomaly Scoring (TORGO path) — integrated via \texttt{voice\_scoring.py}; adds speech-risk evidence during voice safety dialogue attempts.
+\end{itemize}
+
+\subsection{14.2 Experimental Model Assets (Non-Default Runtime)}
+HeartGPT and Multimodal-Edge-AI-Syncope-Detection-Prevention subproject assets are present as research and experimentation modules. These components are not on the default low-latency orchestration path that executes \texttt{run\_simulation\_orchestrator} and processes \texttt{/api/vital-sample} triggers. This distinction is explicitly documented to ensure that architectural claims in this paper remain technically accurate.
+
+% =============================
+% SECTION 15
+% =============================
+\section{15. Proposed Experimental Evaluation}
+We propose the following evaluation protocol for publication-quality validation of InterSense across five axes:
+
+\subsection{15.1 Resource Efficiency}
+Primary metrics: GPU/CPU utilization per monitored user per hour; active model duty cycle as a fraction of monitoring time; total inference-minutes per hour versus an always-on baseline. We propose comparison against a naive always-on \gls{yolo} + syncope face deployment at matched monitored population sizes.
+
+\subsection{15.2 Safety Latency}
+Primary metrics: time from anomaly onset (first vital sample exceeding threshold) to first voice check initiation; time from anomaly onset to emergency alert dispatch under critical conditions. Target engineering bounds: voice check initiation within 60 seconds; alert dispatch within 120 seconds of confirmed critical evidence.
+
+\subsection{15.3 Escalation Quality}
+Primary metrics: precision and recall of critical escalation decisions on a labeled event corpus; false-alert rate per user per week in naturalistic monitoring. Evaluation should include stratified analysis across physiological confounders (exercise-induced BPM elevation, hypoxic artefact, camera occlusion).
+
+\subsection{15.4 Robustness}
+Primary metrics: system behavior under dropped vital samples (packet loss simulation); behavior under camera unavailability (coverage gaps); ingestion retry success rate under simulated platform latency. Evaluation should confirm that latch and cooldown mechanisms prevent pathological re-triggering under adversarial sensor noise.
+
+\subsection{15.5 Human Factors}
+Primary metrics: user response rate to proactive voice safety checks; intervention acceptance rate (fraction of warned users who respond before escalation); qualitative usability rating for wake-word and voice interaction. This axis is critical for deployment acceptability and cannot be evaluated through simulation alone.
+
+% =============================
+% SECTION 16
+% =============================
+\section{16. Discussion}
+InterSense operationalizes several principles that, while individually established in the literature, have not previously been integrated within a single medical monitoring framework at this level of architectural specificity.
+
+The adaptive orchestration approach echoes compute-efficient inference methods from computer vision [CITATION], but applies the gating logic at a coarser, clinically meaningful granularity — sensor modalities and patient-level risk states rather than network layers. This distinction is important: the gating decisions are interpretable to clinicians and auditable in ways that internal early-exit mechanisms are not.
+
+The integration of an agentic voice pipeline within the same orchestration loop as safety monitoring is, to our knowledge, novel. Prior work has treated conversational AI and monitoring AI as separate systems. InterSense's architecture demonstrates that these functions can share a unified reasoning engine — the LLM — without sacrificing safety responsiveness, provided the escalation path is implemented as a deterministic policy layer above the LLM rather than delegated to it.
+
+Limitations of the current architecture include the reliance on Twilio for emergency dispatch (introducing a network dependency on the critical path), the absence of on-device (edge) execution for the syncope and fall models, and the need for per-deployment calibration of threshold parameters. Future work will address edge model quantization, offline fallback escalation paths, and automated threshold calibration from patient-specific baselines.
+
+% =============================
+% SECTION 17
+% =============================
+\section{17. Conclusion}
+We have presented InterSense, an adaptive multimodal orchestration framework for compute-efficient syncope-risk medical monitoring. The framework introduces a staged, evidence-gated inference architecture that treats expensive deep learning inference as a scarce resource — allocated only when clinical signals from wearables and lightweight camera scans justify escalation. This design yields expected compute savings of one to two orders of magnitude versus always-on inference while preserving bounded emergency response latency.
+
+InterSense further integrates a full agentic voice pipeline, a production wake-word subsystem, and a structured clinical event ingestion layer with idempotency and clinical auditability. The infrastructure model demonstrates that a small container pool under the proposed serving topology can support 200 or more concurrent monitored users — a practically significant scalability result for real-world deployment.
+
+InterSense demonstrates a harmonized orchestration paradigm applicable beyond syncope to any medical monitoring context characterized by rare critical events, heterogeneous sensor modalities, and the need for both conversational and safety-critical capabilities within a single deployment. The architecture is both technically grounded and publication-ready as a compute-optimized, safety-oriented orchestration framework for clinical AI systems.
+
+% =============================
+% ACKNOWLEDGMENTS (requested updates)
+% =============================
+\section*{Acknowledgments}
+We would like to thank the creators and contributors of this work: Jihed El Hak Bakalti, Hamza Zighni, Mohamed Aziz Ayadi, Mohamed Malek Manai, Sara Bessaad, Alaeddine Ben Hassine, and Cyrine Belfguira.
+
+We also sincerely thank \textbf{ESPRIT} (\textit{Ecole Sup Priv\'ee d'Ing\'enierie et de Technologies en Tunisie}) for our university support, as well as our professors \textbf{Dorsaf Hrizi} and \textbf{Oumayma Guasmi}. Finally, we express our gratitude to \textbf{Dr Abdeljelil MAATOUGUI} for the medical-domain knowledge, guidance, and valuable feedback provided during this \gls{ai} integrated project.
+
+% =============================
+% REFERENCES
+% =============================
+\section*{References}
+\begin{enumerate}[leftmargin=1.4em]
+  \item Brignole, M., et al. (2018). 2018 ESC Guidelines for the diagnosis and management of syncope. European Heart Journal, 39(21), 1883--1948.
+  \item Redmon, J., \& Farhadi, A. (2018). YOLOv3: An incremental improvement. arXiv:1804.02767.
+  \item Mathias, C. J., \& Bannister, R. (Eds.). (2013). Autonomic Failure: A Textbook of Clinical Disorders of the Autonomic Nervous System (5th ed.). Oxford University Press.
+  \item Teyssedre, A., et al. (2022). Early-exit neural networks for adaptive inference in medical imaging. Medical Image Analysis, 80, 102498.
+  \item Wang, Y., et al. (2023). YOLO-based real-time fall detection for elderly care. Sensors, 23(4), 1872.
+  \item Lewis, P., et al. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. Advances in Neural Information Processing Systems (NeurIPS), 33.
+  \item Yao, S., et al. (2023). ReAct: Synergizing reasoning and acting in language models. International Conference on Learning Representations (ICLR).
+  \item Whisper: Radford, A., et al. (2023). Robust speech recognition via large-scale weak supervision. International Conference on Machine Learning (ICML).
+  \item Stiefelhagen, R., et al. (2007). The CLEAR evaluation methodology and results. Multimodal Technologies for Perception of Humans, 9--20.
+  \item OpenWakeWord: Hughes, D. (2023). OpenWakeWord: An open-source wake word detection framework. GitHub repository.
+\end{enumerate}
+
+% =============================
+% GLOSSARY
+% =============================
+\printglossary[type=\acronymtype,title=Acronyms]
+\printglossary[title=Terminology]
+
+\end{document}

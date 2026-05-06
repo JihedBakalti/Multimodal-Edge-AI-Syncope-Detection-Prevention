@@ -6,8 +6,8 @@
   "cameras_critical": [
     0
   ],
-  "max_risk_score": 0.9982,
-  "max_fall_prob": 0.9982,
+  "max_risk_score": 0.9998,
+  "max_fall_prob": 0.9998,
   "duration_seconds": 30,
   "camera_index": 0,
   "confirm_seconds": 2.0,

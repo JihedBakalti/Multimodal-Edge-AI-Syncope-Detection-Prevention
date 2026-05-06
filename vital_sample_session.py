@@ -80,9 +80,17 @@ class VitalSessionState:
         self.last_timestamp: float = -1.0
         self.last_orchestrate_mono: float = 0.0
         self.last_sample: dict[str, Any] = {}
+        # Serialize apply_sample for this session: overlapping HTTP requests + long-running
+        # orchestrator would interleave stream.process() (corrupt deques) and both could pass
+        # orchestrate_eligible before _orchestration_latched was set (latch was applied only after
+        # run_simulation_orchestrator returned).
+        self._apply_lock = threading.Lock()
         # After a successful auto-orchestration at full escalation, block repeats until
         # max(spo2_score, bpm_score) drops below ORCH_VITAL_ORCHESTRATE_MIN_CHANNEL_SCORE (default 1.0).
         self._orchestration_latched: bool = False
+        # After critical_emergency, block auto-orchestrate for wall time even if trackers reset briefly
+        # (fixes re-trigger loops when sliders stay at extreme HR/SpO₂).
+        self._auto_orch_suppressed_until_mono: float = 0.0
 
     def reset_clinical_trackers(self) -> None:
         """New baselines & empty pattern history; keeps last bpm/spo2 for live-vitals display."""
@@ -114,77 +122,101 @@ class VitalSessionState:
         orchestrate_fn: e.g. submit_orchestrator_task or run_simulation_orchestrator.
         build_orchestrator_payload: receives clinical dict, returns orchestrator payload.
         """
-        if timestamp <= self.last_timestamp:
-            return {
-                "ok": True,
-                "deduplicated": True,
-                "reason": "timestamp_not_increasing",
-                "last_timestamp": self.last_timestamp,
-                "clinical": self.last_sample.get("clinical"),
-                "orchestrator_triggered": False,
+        with self._apply_lock:
+            if timestamp <= self.last_timestamp:
+                return {
+                    "ok": True,
+                    "deduplicated": True,
+                    "reason": "timestamp_not_increasing",
+                    "last_timestamp": self.last_timestamp,
+                    "clinical": self.last_sample.get("clinical"),
+                    "orchestrator_triggered": False,
+                }
+
+            self.last_timestamp = timestamp
+            clinical = self.stream.process(spo2, bpm, timestamp)
+            self.last_sample = {
+                "bpm": bpm,
+                "spo2": spo2,
+                "timestamp": round(timestamp, 3),
+                "clinical": clinical,
             }
 
-        self.last_timestamp = timestamp
-        clinical = self.stream.process(spo2, bpm, timestamp)
-        self.last_sample = {
-            "bpm": bpm,
-            "spo2": spo2,
-            "timestamp": round(timestamp, 3),
-            "clinical": clinical,
-        }
+            score = float(clinical.get("score", 0.0))
+            score_above_threshold = score >= clinical_threshold
+            lo = _orchestrate_min_channel_score()
+            try:
+                ss = float(clinical.get("spo2_score", 0.0))
+                bs = float(clinical.get("bpm_score", 0.0))
+            except (TypeError, ValueError):
+                ss, bs = 0.0, 0.0
+            max_ch = max(ss, bs)
 
-        score = float(clinical.get("score", 0.0))
-        score_above_threshold = score >= clinical_threshold
-        lo = _orchestrate_min_channel_score()
-        try:
-            ss = float(clinical.get("spo2_score", 0.0))
-            bs = float(clinical.get("bpm_score", 0.0))
-        except (TypeError, ValueError):
-            ss, bs = 0.0, 0.0
-        max_ch = max(ss, bs)
+            if self._orchestration_latched and max_ch < lo - 1e-9:
+                self._orchestration_latched = False
 
-        if self._orchestration_latched and max_ch < lo - 1e-9:
-            self._orchestration_latched = False
+            channel_gate = max_ch >= lo - 1e-9
+            orchestrate_eligible = channel_gate and not self._orchestration_latched
 
-        channel_gate = max_ch >= lo - 1e-9
-        orchestrate_eligible = channel_gate and not self._orchestration_latched
-
-        orch_result: dict[str, Any] | None = None
-        triggered = False
-        session_reset = False
-
-        if orchestrate_eligible and should_orchestrate:
+            orch_result: dict[str, Any] | None = None
+            triggered = False
+            session_reset = False
             now_m = time.monotonic()
-            if now_m - self.last_orchestrate_mono >= orchestrate_cooldown_sec:
-                orch_result = orchestrate_fn(build_orchestrator_payload(clinical))
-                self.last_orchestrate_mono = time.monotonic()
-                triggered = True
-                self._orchestration_latched = True
-                if _should_reset_trackers_after_run(clinical, orch_result):
-                    self.reset_clinical_trackers()
-                    session_reset = True
+            post_critical_pause = default_post_critical_silence_sec()
+            suppressed_by_critical_timer = bool(should_orchestrate) and now_m < float(
+                self._auto_orch_suppressed_until_mono or 0.0
+            )
 
-        suppressed_repeat = bool(channel_gate and self._orchestration_latched and not triggered)
+            if orchestrate_eligible and should_orchestrate and not suppressed_by_critical_timer:
+                if now_m - self.last_orchestrate_mono >= orchestrate_cooldown_sec:
+                    # Reserve latch before the long-running orchestrator so concurrent requests
+                    # (different workers) cannot fire a second pipeline while this one runs.
+                    self._orchestration_latched = True
+                    try:
+                        orch_result = orchestrate_fn(build_orchestrator_payload(clinical))
+                        self.last_orchestrate_mono = time.monotonic()
+                        triggered = True
+                        if isinstance(orch_result, dict):
+                            orch_st = str(orch_result.get("state") or "").lower()
+                            if orch_st == "critical_emergency":
+                                self._auto_orch_suppressed_until_mono = max(
+                                    self._auto_orch_suppressed_until_mono,
+                                    time.monotonic() + post_critical_pause,
+                                )
+                        if _should_reset_trackers_after_run(clinical, orch_result):
+                            self.reset_clinical_trackers()
+                            session_reset = True
+                    except Exception:
+                        self._orchestration_latched = False
+                        raise
 
-        return {
-            "ok": True,
-            "deduplicated": False,
-            "bpm": bpm,
-            "spo2": spo2,
-            "timestamp": round(timestamp, 3),
-            "clinical": clinical,
-            "clinical_anomaly": channel_gate,
-            "clinical_orchestrate_eligible": orchestrate_eligible,
-            "clinical_score_above_threshold": score_above_threshold,
-            "clinical_channel_gate": channel_gate,
-            "clinical_escalation_min_channel_score": lo,
-            "clinical_threshold": clinical_threshold,
-            "orchestration_latch_active": self._orchestration_latched,
-            "orchestration_suppressed_repeat": suppressed_repeat,
-            "orchestrator_triggered": triggered,
-            "orchestrator_result": orch_result,
-            "clinical_session_reset": session_reset,
-        }
+            suppressed_repeat = bool(
+                channel_gate and not triggered and (suppressed_by_critical_timer or self._orchestration_latched)
+            )
+
+            return {
+                "ok": True,
+                "deduplicated": False,
+                "bpm": bpm,
+                "spo2": spo2,
+                "timestamp": round(timestamp, 3),
+                "clinical": clinical,
+                "clinical_anomaly": channel_gate,
+                "clinical_orchestrate_eligible": orchestrate_eligible,
+                "clinical_score_above_threshold": score_above_threshold,
+                "clinical_channel_gate": channel_gate,
+                "clinical_escalation_min_channel_score": lo,
+                "clinical_threshold": clinical_threshold,
+                "orchestration_latch_active": self._orchestration_latched,
+                "orchestration_suppressed_repeat": suppressed_repeat,
+                "orchestrator_triggered": triggered,
+                "orchestrator_result": orch_result,
+                "clinical_session_reset": session_reset,
+                "post_critical_auto_orch_paused": suppressed_by_critical_timer,
+                "post_critical_auto_orch_remaining_sec": max(
+                    0.0, float(self._auto_orch_suppressed_until_mono or 0.0) - now_m
+                ),
+            }
 
 
 _lock = threading.Lock()
@@ -221,6 +253,14 @@ def default_clinical_threshold() -> float:
 
 def default_orchestrate_cooldown_sec() -> float:
     return float(os.getenv("ORCH_VITAL_ORCH_COOLDOWN_SEC", "45"))
+
+
+def default_post_critical_silence_sec() -> float:
+    try:
+        v = float(os.getenv("ORCH_VITAL_POST_CRITICAL_SILENCE_SEC", "90"))
+    except (TypeError, ValueError):
+        return 90.0
+    return max(15.0, v)
 
 
 def _vital_auto_reset_enabled() -> bool:

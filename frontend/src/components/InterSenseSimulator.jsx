@@ -4,6 +4,9 @@ import styles from './InterSenseSimulator.module.css';
 const STORAGE_KEY = 'intersense.simulator.panelOpen';
 const STORAGE_SESSION = 'intersense.simulator.sessionId';
 
+const DEFAULT_SIM_HR = 78;
+const DEFAULT_SIM_SPO2 = 98;
+
 function getOrCreateSessionId() {
   try {
     let sid = sessionStorage.getItem(STORAGE_SESSION);
@@ -240,6 +243,45 @@ export default function InterSenseSimulator() {
   const [orchNotice, setOrchNotice] = useState(null);
   const [lastOrchestratorSnapshot, setLastOrchestratorSnapshot] = useState(null);
   const orchNoticeIdRef = useRef(0);
+  const streamVitalsRef = useRef(false);
+  const heartRateRef = useRef(78);
+  const bloodOxygenRef = useRef(98);
+  const humanDetectedRef = useRef(false);
+  const faintingDetectedRef = useRef(false);
+
+  /** After a critical escalation from the vital stream (or server session reset), stop auto-send and restore benign simulator inputs. */
+  const applySimulatorSafeDefaultsAfterCritical = useCallback(() => {
+    setStreamVitals(false);
+    setHeartRate(DEFAULT_SIM_HR);
+    setBloodOxygen(DEFAULT_SIM_SPO2);
+    heartRateRef.current = DEFAULT_SIM_HR;
+    bloodOxygenRef.current = DEFAULT_SIM_SPO2;
+    setAnomalyValue(0.45);
+    setDlRiskScore(0.2);
+    setWearableAnomaly(false);
+    setHumanDetected(false);
+    setFaintingDetected(false);
+    humanDetectedRef.current = false;
+    faintingDetectedRef.current = false;
+    setClinicalSnapshot(null);
+  }, []);
+
+  useEffect(() => {
+    streamVitalsRef.current = streamVitals;
+  }, [streamVitals]);
+
+  useEffect(() => {
+    heartRateRef.current = heartRate;
+  }, [heartRate]);
+  useEffect(() => {
+    bloodOxygenRef.current = bloodOxygen;
+  }, [bloodOxygen]);
+  useEffect(() => {
+    humanDetectedRef.current = humanDetected;
+  }, [humanDetected]);
+  useEffect(() => {
+    faintingDetectedRef.current = faintingDetected;
+  }, [faintingDetected]);
 
   const showOrchestrationAlert = useCallback((detail) => {
     const id = ++orchNoticeIdRef.current;
@@ -295,45 +337,55 @@ export default function InterSenseSimulator() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          heart_rate: heartRate,
-          blood_oxygen: bloodOxygen,
+          heart_rate: heartRateRef.current,
+          blood_oxygen: bloodOxygenRef.current,
           timestamp: ts,
           user_id: '1',
           session_id: sessionId,
           auto_orchestrate: true,
-          human_detected: humanDetected,
-          fainting_detected: faintingDetected
+          human_detected: humanDetectedRef.current,
+          fainting_detected: faintingDetectedRef.current
         })
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.detail || 'Vital sample failed');
       }
-      if (data?.clinical_session_reset) {
-        setStreamVitals(false);
-        setClinicalSnapshot(null);
+      const orchSt = String(data?.orchestrator_result?.state || '').toLowerCase();
+      if (data?.clinical_session_reset || orchSt === 'critical_emergency') {
+        applySimulatorSafeDefaultsAfterCritical();
       } else if (data?.clinical && !data?.deduplicated) {
         setClinicalSnapshot(data.clinical);
       }
       return data;
     },
-    [apiBaseUrl, heartRate, bloodOxygen, humanDetected, faintingDetected, sessionId]
+    [apiBaseUrl, sessionId, applySimulatorSafeDefaultsAfterCritical]
   );
 
   useEffect(() => {
     if (!streamVitals) return undefined;
     let cancelled = false;
-    const tick = async () => {
+    let timeoutId = null;
+
+    const scheduleNext = () => {
+      if (timeoutId != null) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        void runTick();
+      }, 2000);
+    };
+
+    async function runTick() {
+      if (cancelled || !streamVitalsRef.current) return;
       try {
         const data = await postVitalSample(Date.now() / 1000);
-        if (cancelled) return;
+        if (cancelled || !streamVitalsRef.current) return;
         if (data?.orchestrator_triggered && data?.orchestrator_result) {
           const orch = data.orchestrator_result;
           const steps = Array.isArray(orch?.verbose_steps) ? orch.verbose_steps : [];
           let msg = orch?.message || 'Orchestrator ran from vital anomaly.';
-          if (data?.clinical_session_reset) {
+          if (data?.clinical_session_reset || String(data?.orchestrator_result?.state || '').toLowerCase() === 'critical_emergency') {
             msg +=
-              ' Clinical session reset — vital stream paused. Turn streaming on again after adjusting sliders if you want to continue.';
+              ' Simulator reset to safe defaults and vital stream stopped. Re-enable streaming only when you want a new run.';
           }
           setStatus(msg);
           setVerboseSteps(
@@ -355,13 +407,20 @@ export default function InterSenseSimulator() {
         if (!cancelled) {
           setStatus(`Vital stream error: ${e?.message || e}`);
         }
+      } finally {
+        if (!cancelled && streamVitalsRef.current) {
+          scheduleNext();
+        }
       }
-    };
-    tick();
-    const id = setInterval(tick, 2000);
+    }
+
+    runTick();
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (timeoutId != null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
     };
   }, [streamVitals, postVitalSample, showOrchestrationAlert]);
 
@@ -381,14 +440,20 @@ export default function InterSenseSimulator() {
       let line = data?.orchestrator_triggered
         ? 'Clinical anomaly → orchestrator triggered.'
         : `Clinical score ${c.score ?? '—'} (${c.spo2_state || '—'} / ${c.bpm_state || '—'})`;
-      if (!data?.orchestrator_triggered && data?.orchestration_suppressed_repeat) {
+      if (!data?.orchestrator_triggered && data?.post_critical_auto_orch_paused) {
+        const rem = Math.ceil(Number(data?.post_critical_auto_orch_remaining_sec) || 0);
+        line = `Recent critical escalation: auto-orchestrate paused (~${rem}s left). Tune ORCH_VITAL_POST_CRITICAL_SILENCE_SEC on the server if needed.`;
+      } else if (!data?.orchestrator_triggered && data?.orchestration_suppressed_repeat) {
         line = `At full escalation (max channel score ≥ ${minCh}) — repeat orchestration suppressed until scores drop below ${minCh} (same simulator values won’t re-alert).`;
       } else if (!data?.orchestrator_triggered && data?.clinical_score_above_threshold && !data?.clinical_channel_gate) {
         line = `Combined score ${c.score ?? '—'} may be elevated, but auto-orchestration requires max(SpO₂ score, HR score) ≥ ${minCh} (CRITICAL = 1.0). Current: SpO₂ ${c.spo2_score ?? '—'}, HR ${c.bpm_score ?? '—'}.`;
       }
-      if (data?.clinical_session_reset) {
+      if (
+        data?.clinical_session_reset ||
+        String(data?.orchestrator_result?.state || '').toLowerCase() === 'critical_emergency'
+      ) {
         line +=
-          ' Session reset on server (critical path) — vital stream turned off; send fresh samples before streaming again.';
+          ' Session reset / critical path — simulator back to safe defaults and vital stream stopped; send fresh samples or re-enable streaming when ready.';
       }
       setStatus(line);
       if (data?.orchestrator_triggered && data?.orchestrator_result) {
@@ -479,6 +544,9 @@ export default function InterSenseSimulator() {
           lines,
           source: 'manual-simulate'
         });
+      }
+      if (String(st || '').toLowerCase() === 'critical_emergency') {
+        applySimulatorSafeDefaultsAfterCritical();
       }
     } catch (error) {
       const message = error?.message || 'Network error';
@@ -691,8 +759,10 @@ export default function InterSenseSimulator() {
               </h3>
               <p style={{ fontSize: '11px', opacity: 0.75, margin: '0 0 8px' }}>
                 Each sample uses a monotonic timestamp. Auto-orchestration runs only when{' '}
-                <strong>max(SpO₂ score, HR score) ≥ 1.0</strong> (CRITICAL on a channel). After an alert, repeats are
-                suppressed until that max drops below the same threshold (stops infinite re-alerts on the same sliders).
+                <strong>max(SpO₂ score, HR score) ≥ 1.0</strong> (CRITICAL on a channel). After a{' '}
+                <strong>critical_emergency</strong> run, the server pauses further auto-orchestration for{' '}
+                <strong>ORCH_VITAL_POST_CRITICAL_SILENCE_SEC</strong> (default 90s) so tracker resets cannot immediately
+                re-trigger on the same extreme sliders; the UI also stops streaming and resets vitals to safe defaults.
                 Tune with ORCH_VITAL_ORCHESTRATE_MIN_CHANNEL_SCORE (e.g. 0.8 to allow HIGH RISK).
               </p>
               <ToggleField
