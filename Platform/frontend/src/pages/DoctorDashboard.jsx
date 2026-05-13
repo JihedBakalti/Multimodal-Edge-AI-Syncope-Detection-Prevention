@@ -3,6 +3,7 @@ import KpiCard from "../components/KpiCard";
 import TimelineList from "../components/TimelineList";
 import ChatPanel from "../components/ChatPanel";
 import ClinicalLineChart from "../components/ClinicalLineChart";
+import FirebaseLiveVitalsPanel from "../components/FirebaseLiveVitalsPanel";
 import { api } from "../services/api";
 
 export default function DoctorDashboard({ me, activeSection, assignments, vitals, triggers, voiceChecks, incidents, alerts, onNavigateSection }) {
@@ -364,6 +365,11 @@ export default function DoctorDashboard({ me, activeSection, assignments, vitals
                       <p className="mini-value">{selectedPatientSummary?.voice_checks_count ?? 0}</p>
                     </article>
                   </section>
+
+                  <FirebaseLiveVitalsPanel
+                    firebaseUserId={selectedAssignment?.patient?.user_id}
+                    sessionId={selectedPatientId ? `platform-patient-${selectedPatientId}` : "default-session"}
+                  />
 
                   <section className="panel patient-graph-panel">
                     <div className="panel-head">

@@ -109,10 +109,21 @@ CHANNEL_LAYERS = {
 PLATFORM_INGEST_TOKEN = os.getenv("PLATFORM_INGEST_TOKEN", "platform-dev-token")
 PLATFORM_INGEST_REPLAY_WINDOW_SEC = int(os.getenv("PLATFORM_INGEST_REPLAY_WINDOW_SEC", "300"))
 
-# Local dev and split-service frontends (Vite / production portal host).
-CORS_ALLOWED_ORIGINS = [
+# CORS: comma-separated list, e.g. "https://your-app.vercel.app,https://preview.vercel.app"
+# If unset, defaults to local Vite ports only.
+_local_cors_origins = [
     "http://127.0.0.1:5174",
     "http://localhost:5174",
     "http://127.0.0.1:5173",
     "http://localhost:5173",
 ]
+_platform_cors = os.getenv("PLATFORM_CORS_ALLOWED_ORIGINS", "").strip()
+if _platform_cors:
+    CORS_ALLOWED_ORIGINS = [x.strip() for x in _platform_cors.split(",") if x.strip()]
+else:
+    CORS_ALLOWED_ORIGINS = list(_local_cors_origins)
+
+# If you use session cookies cross-site (less common with this API’s Basic header flow), set explicitly.
+_csrf = os.getenv("PLATFORM_CSRF_TRUSTED_ORIGINS", "").strip()
+if _csrf:
+    CSRF_TRUSTED_ORIGINS = [x.strip() for x in _csrf.split(",") if x.strip()]

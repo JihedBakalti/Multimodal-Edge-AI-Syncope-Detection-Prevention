@@ -1539,3 +1539,30 @@ button {
     font-size: 1.05rem;
   }
 }
+
+/* Firebase RTDB live vitals (same path contract as medical_assistant) */
+.firebase-live-panel .firebase-live-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.firebase-live-panel .firebase-live-path {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+}
+.firebase-live-panel .firebase-live-path code {
+  font-size: 0.82rem;
+  color: var(--warning);
+}
+.firebase-live-panel .firebase-live-metrics {
+  margin-top: 4px;
+}
+.firebase-live-panel .status-chip.live {
+  background: rgba(60, 207, 140, 0.2);
+  color: var(--success);
+  border-color: rgba(60, 207, 140, 0.45);
+}
+.firebase-live-panel .firebase-live-msg {
+  margin-top: 10px;
+}

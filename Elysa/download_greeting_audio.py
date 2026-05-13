@@ -30,6 +30,14 @@ PROMPTS = [
         "A critical fainting episode is detected. Automatic escalation is starting.",
         "critical_fainting_escalation.mp3",
     ),
+    (
+        "HAMZA! A critical heart rate anomaly has been detected! Are you feeling okay??",
+        "heart_rate_anomaly_hamza.mp3",
+    ),
+    (
+        "A fainting episode has been confirmed! The automatic alerting system has been triggered!",
+        "fainting_episode_confirmed_alert.mp3",
+    ),
 ]
 VOICE_ID = "Xb7hH8MSUJpSbSDYk0k2"
 MODEL_ID = "eleven_multilingual_v2"

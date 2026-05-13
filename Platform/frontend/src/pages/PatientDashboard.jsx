@@ -2,6 +2,7 @@ import KpiCard from "../components/KpiCard";
 import TimelineList from "../components/TimelineList";
 import ChatPanel from "../components/ChatPanel";
 import ClinicalLineChart from "../components/ClinicalLineChart";
+import FirebaseLiveVitalsPanel from "../components/FirebaseLiveVitalsPanel";
 
 export default function PatientDashboard({ me, assignments, activeSection, vitals, triggers, voiceChecks, incidents, alerts, onNavigateSection }) {
   const patientId = assignments[0]?.patient?.id;
@@ -74,6 +75,11 @@ export default function PatientDashboard({ me, assignments, activeSection, vital
                 <p className="mini-value">{myTriggers.length}</p>
               </article>
             </section>
+            <FirebaseLiveVitalsPanel
+              firebaseUserId={assignments[0]?.patient?.user_id}
+              sessionId={assignments[0]?.patient?.id ? `platform-patient-${assignments[0].patient.id}` : "default-session"}
+              title="Live vitals from your device (Firebase)"
+            />
             <section className="panel patient-graph-panel">
               <div className="panel-head">
                 <h3>Vitals and voice risk over time</h3>
