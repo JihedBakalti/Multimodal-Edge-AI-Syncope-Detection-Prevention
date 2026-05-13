@@ -12,6 +12,9 @@ if load_dotenv:
     load_dotenv(BASE_DIR / ".env")
     load_dotenv(BASE_DIR.parent.parent / ".env")
 SHARED_SQLITE_PATH = os.getenv("PLATFORM_SQLITE_PATH", "").strip()
+# Frozen copy of repo-root `shared_platform_agent.sqlite3` for standalone Platform deploys
+# (same schema/data; not the live file — refresh by overwriting `platform_agent.sqlite3`).
+_PLATFORM_AGENT_SQLITE = BASE_DIR / "platform_agent.sqlite3"
 SECRET_KEY = os.getenv("PLATFORM_SECRET_KEY", "dev-only-secret-key")
 DEBUG = os.getenv("PLATFORM_DEBUG", "1") == "1"
 ALLOWED_HOSTS = os.getenv("PLATFORM_ALLOWED_HOSTS", "*").split(",")
@@ -78,7 +81,10 @@ DATABASES = {
         if os.getenv("PLATFORM_DB_ENGINE", "sqlite").lower() == "postgres"
         else {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": SHARED_SQLITE_PATH or (BASE_DIR / "db.sqlite3"),
+            # One bundled SQLite file (duplicate of repo `shared_platform_agent.sqlite3`); override with PLATFORM_SQLITE_PATH if needed.
+            "NAME": Path(SHARED_SQLITE_PATH).expanduser()
+            if SHARED_SQLITE_PATH
+            else _PLATFORM_AGENT_SQLITE,
         }
     )
 }
