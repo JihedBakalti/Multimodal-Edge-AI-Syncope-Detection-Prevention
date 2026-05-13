@@ -15,10 +15,22 @@ function queryString(params) {
 async function http(path, options = {}) {
   const token = localStorage.getItem(AUTH_STORAGE_KEY);
   const authHeader = token ? { Authorization: `Basic ${token}` } : {};
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...authHeader, ...(options.headers || {}) },
-    ...options,
-  });
+  const url = `${API_BASE}${path}`;
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: { "Content-Type": "application/json", ...authHeader, ...(options.headers || {}) },
+      ...options,
+    });
+  } catch (err) {
+    const msg = err?.message ? String(err.message) : "Network error";
+    const error = new Error(
+      `Cannot reach API (${msg}). Confirm VITE_PLATFORM_API_BASE and Render CORS (PLATFORM_CORS_ALLOWED_ORIGINS).`
+    );
+    error.status = 0;
+    error.cause = err;
+    throw error;
+  }
   const raw = await response.text();
   let data = null;
   if (raw) {

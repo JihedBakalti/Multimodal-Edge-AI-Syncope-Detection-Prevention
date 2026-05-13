@@ -73,7 +73,15 @@ export default function App() {
       await api.login(loginForm.email, loginForm.password);
       await bootstrap();
     } catch (e) {
-      setLoginError(e.status === 401 ? "Invalid email or password." : "Login failed. Check your connection and try again.");
+      if (e.status === 401) {
+        setLoginError("Invalid email or password.");
+      } else if (e.status === 403) {
+        setLoginError(e.message || "Access denied (403). Check backend CORS and CSRF settings.");
+      } else if (e.status === 0) {
+        setLoginError(e.message || "Cannot reach the API. Check VITE_PLATFORM_API_BASE and redeploy.");
+      } else {
+        setLoginError(e.message || "Login failed. Check your connection and try again.");
+      }
     } finally {
       setLoginSubmitting(false);
     }
