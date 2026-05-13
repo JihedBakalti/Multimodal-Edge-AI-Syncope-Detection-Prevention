@@ -12,5 +12,7 @@ daphne>=4.1.0
 
 reportlab>=4.2.0
 
+whitenoise>=6.6.0
+
 # When PLATFORM_DB_ENGINE=postgres (see config/settings.py)
 psycopg[binary]>=3.1.0
