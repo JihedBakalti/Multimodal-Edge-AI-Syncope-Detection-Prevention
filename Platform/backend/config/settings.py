@@ -19,6 +19,9 @@ SECRET_KEY = os.getenv("PLATFORM_SECRET_KEY", "dev-only-secret-key")
 DEBUG = os.getenv("PLATFORM_DEBUG", "1") == "1"
 ALLOWED_HOSTS = os.getenv("PLATFORM_ALLOWED_HOSTS", "*").split(",")
 
+# Same RTDB base URL as medical assistant (server-side only; not exposed to Vercel).
+FIREBASE_RTDB_URL = os.getenv("FIREBASE_RTDB_URL", os.getenv("PLATFORM_FIREBASE_RTDB_URL", "")).strip().rstrip("/")
+
 INSTALLED_APPS = [
     "corsheaders",
     "django.contrib.admin",

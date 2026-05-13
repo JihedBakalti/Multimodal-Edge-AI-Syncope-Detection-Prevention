@@ -78,6 +78,7 @@ export default function PatientDashboard({ me, assignments, activeSection, vital
             <FirebaseLiveVitalsPanel
               firebaseUserId={assignments[0]?.patient?.user_id}
               sessionId={assignments[0]?.patient?.id ? `platform-patient-${assignments[0].patient.id}` : "default-session"}
+              patientId={assignments[0]?.patient?.id ?? null}
               title="Live vitals from your device (Firebase)"
             />
             <section className="panel patient-graph-panel">

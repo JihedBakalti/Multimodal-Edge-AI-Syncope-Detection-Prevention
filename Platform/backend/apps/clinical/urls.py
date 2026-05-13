@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     AlertEventLogListView,
+    FirebaseLiveVitalsView,
     ModelTriggerLogListView,
     MonitoringIncidentListView,
     PatientSummaryView,
@@ -10,6 +11,7 @@ from .views import (
 
 urlpatterns = [
     path("vitals/", VitalSignalLogListView.as_view(), name="clinical-vitals"),
+    path("firebase-live-vitals/", FirebaseLiveVitalsView.as_view(), name="clinical-firebase-live-vitals"),
     path("voice-checks/", VoiceSafetyCheckLogListView.as_view(), name="clinical-voice-checks"),
     path("triggers/", ModelTriggerLogListView.as_view(), name="clinical-triggers"),
     path("incidents/", MonitoringIncidentListView.as_view(), name="clinical-incidents"),

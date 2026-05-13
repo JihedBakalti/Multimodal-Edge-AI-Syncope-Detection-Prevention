@@ -12,9 +12,10 @@ function formatTime(ts) {
 export default function FirebaseLiveVitalsPanel({
   firebaseUserId,
   sessionId = "default-session",
+  patientId = null,
   title = "Live device vitals",
 }) {
-  const live = useLiveFirebaseVitals(firebaseUserId, sessionId);
+  const live = useLiveFirebaseVitals(firebaseUserId, sessionId, patientId);
   const uid = String(firebaseUserId ?? "").trim();
   const sid = String(sessionId ?? "default-session").trim() || "default-session";
 
@@ -44,14 +45,18 @@ export default function FirebaseLiveVitalsPanel({
   const fbPollLabel = Number.isFinite(fbPollMs) && fbPollMs >= 500 ? fbPollMs : 2000;
   const asstPollMs = Number(import.meta.env.VITE_LIVE_VITALS_POLL_MS);
   const asstPollLabel = Number.isFinite(asstPollMs) && asstPollMs >= 500 ? asstPollMs : 3000;
+  const platPollMs = Number(import.meta.env.VITE_PLATFORM_FIREBASE_POLL_MS);
+  const platPollLabel = Number.isFinite(platPollMs) && platPollMs >= 500 ? platPollMs : 2500;
   const modeLabel =
     live.mode === "assistant"
       ? `Medical assistant API (${asstPollLabel} ms)`
-      : live.mode === "realtime"
-        ? "Realtime (Firebase SDK)"
-        : live.mode === "poll"
-          ? `Firebase REST (${fbPollLabel} ms)`
-          : "—";
+      : live.mode === "platform"
+        ? `Platform API proxy (${platPollLabel} ms)`
+        : live.mode === "realtime"
+          ? "Realtime (Firebase SDK)"
+          : live.mode === "poll"
+            ? `Firebase REST (${fbPollLabel} ms)`
+            : "—";
   const statusChip =
     live.status === "live" ? "live" : live.status === "connecting" || live.status === "polling" ? "pending" : live.status === "empty" ? "neutral" : "critical";
 
@@ -68,6 +73,11 @@ export default function FirebaseLiveVitalsPanel({
         {live.mode === "assistant" ? (
           <>
             Same source as InterSense simulator: <code>{`/api/live-vitals?user_id=${uid}&session_id=${sid}`}</code>
+          </>
+        ) : live.mode === "platform" ? (
+          <>
+            Via platform API: <code>{`/api/clinical/firebase-live-vitals/?patient_id=${patientId ?? ""}`}</code> (Render reads RTDB using{" "}
+            <code>FIREBASE_RTDB_URL</code>)
           </>
         ) : (
           <>

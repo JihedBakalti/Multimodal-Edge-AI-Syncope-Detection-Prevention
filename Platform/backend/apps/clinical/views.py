@@ -1,5 +1,7 @@
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.accounts.models import DoctorPatientAssignment, PatientProfile
 from .models import AlertEventLog, MonitoringIncident, ModelTriggerLog, VitalSignalLog, VoiceSafetyCheckLog
@@ -93,3 +95,27 @@ class PatientSummaryView(generics.RetrieveAPIView):
             "latest_voice_response_class": latest_voice.response_class if latest_voice else None,
         }
         return Response(payload)
+
+
+class FirebaseLiveVitalsView(APIView):
+    """Proxy Firebase RTDB vitals for an assigned patient (doctor or that patient)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        raw_pid = request.query_params.get("patient_id")
+        if not raw_pid or not str(raw_pid).isdigit():
+            return Response({"detail": "patient_id query parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
+        patient_id = int(raw_pid)
+        if patient_id not in _allowed_patient_ids(request.user):
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+        patient = PatientProfile.objects.get(id=patient_id)
+        uid = (patient.firebase_user_id or "").strip()
+        if not uid:
+            return Response(
+                {"ok": False, "message": "Patient has no Firebase user_id on file.", "source": None},
+                status=status.HTTP_200_OK,
+            )
+        from .firebase_rtdb import fetch_firebase_vitals
+
+        return Response(fetch_firebase_vitals(uid))

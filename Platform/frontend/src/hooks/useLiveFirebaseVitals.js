@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { initializeApp, getApps } from "firebase/app";
 import { getDatabase, ref, onValue } from "firebase/database";
+import { api } from "../services/api";
 import { fetchFirebaseVitalsRest, parseVitalsDict, rtdbBaseUrlFromEnv } from "../services/firebaseVitals";
 import { assistantApiBaseFromEnv, fetchLiveVitalsAssistant } from "../services/liveVitalsAssistant";
 
@@ -30,20 +31,24 @@ function firebasePollIntervalMs() {
   return Number.isFinite(n) && n >= 500 ? n : 2000;
 }
 
-/** Same interval as `frontend/src/components/InterSenseSimulator.jsx` live vitals poll. */
 function assistantPollIntervalMs() {
   const n = Number(import.meta.env.VITE_LIVE_VITALS_POLL_MS);
   return Number.isFinite(n) && n >= 500 ? n : 3000;
 }
 
+function platformProxyPollIntervalMs() {
+  const n = Number(import.meta.env.VITE_PLATFORM_FIREBASE_POLL_MS);
+  return Number.isFinite(n) && n >= 500 ? n : 2500;
+}
+
 /**
- * Live vitals for one Firebase user id (`PatientProfile.firebase_user_id` / API `user_id`).
+ * Live vitals for one patient (Firebase user id on profile).
  *
- * 1) If `VITE_API_BASE_URL` or `VITE_ORCHESTRATOR_API_BASE_URL` is set — polls `GET /api/live-vitals`
- *    (same contract as the medical assistant / InterSenseSimulator frontend; server reads Firebase).
- * 2) Else — browser Firebase RTDB (SDK or REST) using `VITE_FIREBASE_RTDB_URL`.
+ * 1) VITE_API_BASE_URL / VITE_ORCHESTRATOR_API_BASE_URL → medical assistant GET /api/live-vitals
+ * 2) Else VITE_PLATFORM_API_BASE + Django patient id → GET /api/clinical/firebase-live-vitals/ (Render reads RTDB; set FIREBASE_RTDB_URL on server)
+ * 3) Else VITE_FIREBASE_RTDB_URL (+ optional web SDK env) → browser RTDB
  */
-export function useLiveFirebaseVitals(firebaseUserId, sessionId = "default-session") {
+export function useLiveFirebaseVitals(firebaseUserId, sessionId = "default-session", patientId = null) {
   const [state, setState] = useState({
     status: "idle",
     mode: "none",
@@ -109,6 +114,61 @@ export function useLiveFirebaseVitals(firebaseUserId, sessionId = "default-sessi
       };
     }
 
+    const pid = patientId != null && String(patientId).trim() !== "" ? Number(patientId) : null;
+    if (pid != null && Number.isFinite(pid)) {
+      let cancelled = false;
+      setState((s) => ({ ...s, status: "polling", mode: "platform" }));
+
+      async function tick() {
+        try {
+          const data = await api.firebaseLiveVitals(pid);
+          if (cancelled) return;
+          if (data?.ok) {
+            setState({
+              status: "live",
+              mode: "platform",
+              heart_rate: data.heart_rate ?? null,
+              blood_oxygen: data.blood_oxygen ?? null,
+              source: data.source || "/api/clinical/firebase-live-vitals/",
+              message: null,
+              updatedAt: Date.now(),
+              raw: data.raw ?? null,
+            });
+          } else {
+            setState({
+              status: "error",
+              mode: "platform",
+              heart_rate: null,
+              blood_oxygen: null,
+              source: null,
+              message: data?.message || "Platform proxy returned no vitals",
+              updatedAt: Date.now(),
+              raw: data?.raw ?? null,
+            });
+          }
+        } catch (e) {
+          if (cancelled) return;
+          setState({
+            status: "error",
+            mode: "platform",
+            heart_rate: null,
+            blood_oxygen: null,
+            source: null,
+            message: e?.message ? String(e.message) : "Platform live vitals request failed",
+            updatedAt: Date.now(),
+            raw: null,
+          });
+        }
+      }
+
+      tick();
+      const id = setInterval(tick, platformProxyPollIntervalMs());
+      return () => {
+        cancelled = true;
+        clearInterval(id);
+      };
+    }
+
     const baseUrl = rtdbBaseUrlFromEnv();
     if (!baseUrl) {
       setState((s) => ({
@@ -116,7 +176,7 @@ export function useLiveFirebaseVitals(firebaseUserId, sessionId = "default-sessi
         status: "unconfigured",
         mode: "none",
         message:
-          "Set VITE_API_BASE_URL to the medical assistant host (e.g. http://127.0.0.1:8000), or set VITE_FIREBASE_RTDB_URL for direct browser reads.",
+          "On Render set FIREBASE_RTDB_URL (same RTDB URL as the medical assistant). Redeploy the backend. Optional: VITE_API_BASE_URL on Vercel for the assistant merge feed, or VITE_FIREBASE_RTDB_URL for direct browser reads.",
       }));
       return undefined;
     }
@@ -210,7 +270,7 @@ export function useLiveFirebaseVitals(firebaseUserId, sessionId = "default-sessi
       cancelled = true;
       clearInterval(id);
     };
-  }, [firebaseUserId, sessionId]);
+  }, [firebaseUserId, sessionId, patientId]);
 
   return state;
 }

@@ -103,6 +103,8 @@ export const api = {
     http(`/messaging/conversations/${conversationId}/mark-read/`, {
       method: "POST",
     }),
+  firebaseLiveVitals: (patientId) =>
+    http(`/clinical/firebase-live-vitals/${queryString({ patient_id: patientId })}`),
   reports: () => http("/reports/"),
   createReport: (payload) =>
     http("/reports/", {

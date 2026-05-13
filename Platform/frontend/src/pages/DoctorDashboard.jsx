@@ -369,6 +369,7 @@ export default function DoctorDashboard({ me, activeSection, assignments, vitals
                   <FirebaseLiveVitalsPanel
                     firebaseUserId={selectedAssignment?.patient?.user_id}
                     sessionId={selectedPatientId ? `platform-patient-${selectedPatientId}` : "default-session"}
+                    patientId={selectedPatientId}
                   />
 
                   <section className="panel patient-graph-panel">
